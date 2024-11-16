@@ -1,6 +1,14 @@
+#!/usr/bin/env swipl
+
 % Constraint library for dealing with geometry and positions.
 :- use_module(library(clpfd)).
 :- use_module(library(http/json)).
+:- use_module(library(main)).
+
+:- initialization(main, main).
+
+main(_Argv):-
+	test_game().
 
 % UTILS: These are probably already builtins or standard lib things,
 % but I don't know the standard library
