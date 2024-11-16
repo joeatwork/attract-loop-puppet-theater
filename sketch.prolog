@@ -63,25 +63,28 @@ sprite(mob(megaman, _XPosition, _YPosition, _XSpeed, YSpeed, left), _Tick, jumpL
 % bounds(MobId, Sprite, Width, Height).
 % These are measured from the actual sprites. Metrics are in "scxreen units"
 
-dimensions(megaman, standLeft, 60, 72).
+% Sprite sheet geometry
+% sheet_geometry(mobId, spriteId, widthUnits, heightUnits, sheetOffsetX, sheetOffsetY, sheetWidth, sheetHeight)
 
-dimensions(megaman, standRight, 60, 72).
+sheet_geometry(megaman, standLeft, 60, 72, 0, 0, 20, 24).
 
-dimensions(megaman, runRight1, 72, 66).
+sheet_geometry(megaman, standRight, 60, 72, 20, 0, 20, 24).
 
-dimensions(megaman, runRight2, 48, 72).
+sheet_geometry(megaman, runLeft1, 72, 66, 0, 24, 24, 22).
 
-dimensions(megaman, runRight3, 63, 66).
+sheet_geometry(megaman, runLeft2, 48, 72, 24, 24, 16, 24).
 
-dimensions(megaman, runLeft1, 72, 66).
+sheet_geometry(megaman, runLeft3, 63, 66, 40, 24, 21, 24).
 
-dimensions(megaman, runLeft2, 48, 72).
+sheet_geometry(megaman, runRight1, 72, 66, 0, 48, 24, 22).
 
-dimensions(megaman, runLeft3, 63, 66).
+sheet_geometry(megaman, runRight2, 48, 72, 24, 48, 16, 24).
 
-dimensions(megaman, jumpRight1, 78, 90).
+sheet_geometry(megaman, runRight3, 63, 66, 40, 48, 21, 24).
 
-dimensions(megaman, jumpLeft1, 78, 90).
+sheet_geometry(megaman, jumpLeft, 78, 90, 0, 72, 26, 30).
+
+sheet_geometry(megaman, jumpRight, 78, 90, 26, 72, 26, 30).
 
 % TODO: Returning 
 
@@ -109,25 +112,26 @@ is_endgame(State, Tick, level_bounds(LevelWidth, LevelHeight)):-
 	sprite(mob(megaman, XPosition, YPosition, XSpeed, YSpeed, Facing),
 		Tick,
 		Sprite),
-	dimensions(megaman, Sprite, HeroWidth, HeroHeight),
+	sheet_geometry(megaman, Sprite, HeroWidth, HeroHeight, _SheetX, _SheetY, _SheetW, _SheetH),
 	XPosition + HeroWidth < 0,
 	XPosition > LevelWidth,
 	YPosition + HeroHeight < 0,
 	YPosition > LevelHeight.
 
 % TODO: We should know the sprite sheet geometry here
+% TODO: We should know about SCREEN geometry here, too!
 
-writable_mob(Tick, mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),  writable{type_id:TypeId, sprite:Sprite, x:XPosition, y:YPosition}):-
+writable_mob(Tick, mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing), writable{type_id:TypeId, sprite:Sprite, level_x:XPosition, level_y:YPosition, level_width:LevelWidth, level_height:LevelHeight, sheet_x:SheetX, sheet_y:SheetY, sheet_width:SheetWidth, sheet_height:SheetHeight}):-
 	sprite(mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
 		Tick,
-		Sprite).
+		Sprite),
+	sheet_geometry(TypeId, Sprite, LevelWidth, LevelHeight, SheetX, SheetY, SheetWidth, SheetHeight).
 
 write_state(Tick, State):-
-	maplist(writable_mob(Tick), State, Writables),
-	json_write_dict(current_output, state{
-		tick: Tick,
-		sprites: Writables
-	}),
+	maplist(writable_mob(Tick),
+		State,
+		Writables),
+	json_write_dict(current_output, state{tick : Tick, sprites : Writables}),
 	nl.
 
 
