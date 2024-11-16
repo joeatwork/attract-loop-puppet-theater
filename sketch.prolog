@@ -1,5 +1,6 @@
 % Constraint library for dealing with geometry and positions.
 :- use_module(library(clpfd)).
+:- use_module(library(http/json)).
 
 % UTILS: These are probably already builtins or standard lib things,
 % but I don't know the standard library
@@ -30,27 +31,27 @@ sprite(mob(megaman, _XPosition, _YPosition, 0, 0, left), _Tick, standLeft).
 sprite(mob(megaman, _XPosition, _YPosition, 0, 0, right), _Tick, standRight).
 
 sprite(mob(megaman, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight1):-
-	Tick mod 3 = 0,
+	Tick mod 3 =:= 0,
 	XSpeed \= 0.
 
 sprite(mob(megaman, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight2):-
-	Tick mod 3 = 1,
+	Tick mod 3 =:= 1,
 	XSpeed \= 0.
 
 sprite(mob(megaman, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight3):-
-	Tick mod 3 = 2,
+	Tick mod 3 =:= 2,
 	XSpeed \= 0.
 
 sprite(mob(megaman, _XPosition, _YPosition, XSpeed, 0, left), Tick, runLeft1):-
-	Tick mod 3 = 0,
+	Tick mod 3 =:= 0,
 	XSpeed \= 0.
 
 sprite(mob(megaman, _XPosition, _YPosition, XSpeed, 0, left), Tick, runLeft2):-
-	Tick mod 3 = 1,
+	Tick mod 3 =:= 1,
 	XSpeed \= 0.
 
 sprite(mob(megaman, _XPosition, _YPosition, XSpeed, 0, left), Tick, runLeft3):-
-	Tick mod 3 = 2,
+	Tick mod 3 =:= 2,
 	XSpeed \= 0.
 
 sprite(mob(megaman, _XPosition, _YPosition, _XSpeed, YSpeed, right), _Tick, jumpRight):-
@@ -109,12 +110,26 @@ is_endgame(State, Tick, level_bounds(LevelWidth, LevelHeight)):-
 		Tick,
 		Sprite),
 	dimensions(megaman, Sprite, HeroWidth, HeroHeight),
-	XPosition + HeroWidth > 0,
-	XPosition < LevelWidth,
-	YPosition + HeroHeight > 0,
-	YPosition < LevelHeight.
+	XPosition + HeroWidth < 0,
+	XPosition > LevelWidth,
+	YPosition + HeroHeight < 0,
+	YPosition > LevelHeight.
 
-	
+% TODO: We should know the sprite sheet geometry here
+
+writable_mob(Tick, mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),  writable{type_id:TypeId, sprite:Sprite, x:XPosition, y:YPosition}):-
+	sprite(mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
+		Tick,
+		Sprite).
+
+write_state(Tick, State):-
+	maplist(writable_mob(Tick), State, Writables),
+	json_write_dict(current_output, state{
+		tick: Tick,
+		sprites: Writables
+	}),
+	nl.
+
 
 % Right now, game state is just a list of Mobs
 
@@ -129,7 +144,7 @@ Tick > 100;
 	NextTick is Tick + 1,
 	hero_agent_update(OldState, Tick, NewState),
 	% TODO: game state is gonna be a list of sprites and positions in a viewport
-	write(NewState), nl,
+	write_state(Tick, NewState),
 	game(NewState, NextTick).
 
 test_game():-
