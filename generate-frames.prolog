@@ -141,26 +141,47 @@ sheet_geometry(hero, jumpRight, 78, 90, "megaman/jump-right.png", 0, 0, 26, 30).
 
 sheet_geometry(brick, brick, 32, 32, "placeholders/brick-16x16.png", 0, 0, 16, 16).
 
-% TODO: Returning 
+mob_move_x(OldX, none, _Facing, OldX).
 
-mob_move(OldX, OldY, XSpeed, YSpeed, right, NewX, NewY):-
-	NewX #= OldX + XSpeed,
+mob_move_x(OldX, XSpeed, right, NewX):-
+	integer(XSpeed),
+	NewX #= OldX + XSpeed.
+
+mob_move_x(OldX, XSpeed, left, NewX):-
+	integer(XSpeed),
+	NewX #= OldX - XSpeed.
+
+mob_move_y(OldY, none, OldY).
+
+mob_move_y(OldY, YSpeed, NewY):-
 	NewY #= OldY + YSpeed.
 
-mob_move(OldX, OldY, XSpeed, YSpeed, left, NewX, NewY):-
-	NewX #= OldX - XSpeed,
-	NewY #= OldY + YSpeed.
+mob_move(OldX, OldY, XSpeed, YSpeed, Facing, NewX, NewY):-
+	mob_move_x(OldX, XSpeed, Facing, NewX),
+	mob_move_y(OldY, YSpeed, NewY).
 
 % TODO: Physics and collision detection should be intertwingled;
 % in particular, what collides with what after a move
 % (and how to reposition a thing after a move)
 % matters.
-% TODO: *All* mobs wanna move, not just hero
+
+gravity([], []).
+gravity([H | L], [H | L1]):-
+	H = mob(_TypeId, _XPosition, _YPosition, _XSpeed, none, _Facing),
+	gravity(L, L1).
+gravity([H | L], [H1 | L1]):-
+	H = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
+	integer(YSpeed),
+	NewSpeed #= YSpeed + 1,
+	H1 = mob(TypeId, XPosition, YPosition, XSpeed, NewSpeed, Facing),
+	gravity(L, L1).
 
 after_physics(OldState, _Tick, NewState):-
-	pluck_from_list(OldState,
+	gravity(OldState, Accellerated),
+	pluck_from_list(Accellerated,
 		mob(hero, XPosition, YPosition, XSpeed, YSpeed, Facing),
 		RemainingState),
+	% Collide here?
 	mob_move(XPosition, YPosition, XSpeed, YSpeed, Facing, NewX, NewY),
 	NewState = [mob(hero, NewX, NewY, XSpeed, YSpeed, Facing)|RemainingState].
 
@@ -201,10 +222,8 @@ write_state(Tick, State):-
 
 % A game produces "done" after writing a list of frames
 
-game(OldState, Tick):-
-	is_endgame(OldState,
-		Tick,
-		level_bounds(1280, 720));
+game(OldState, Tick, Bounds):-
+	is_endgame(OldState, Tick, Bounds);
 % Timeout
 Tick > 1000;
 !,
@@ -212,17 +231,18 @@ Tick > 1000;
 	after_physics(OldState, Tick, NewState),
 	% TODO: game state is gonna be a list of sprites and positions in a viewport
 	write_state(Tick, NewState),
-	game(NewState, NextTick).
+	game(NewState, NextTick, Bounds).
 
 test_game():-
 	% Need a better way to describe the initial state of a level
 	game(
 		[
 			mob(hero, 0, 0, 4, 0, right),
-			mob(brick, 0, 688, 0, 0, neutral),
-			mob(brick, 32, 688, 0, 0, neutral),
-			mob(brick, 64, 688, 0, 0, neutral),
-			mob(brick, 96, 688, 0, 0, neutral),
-			mob(brick, 128, 688, 0, 0, neutral)
+			mob(brick, 0, 344, none, none, neutral),
+			mob(brick, 32, 344, none, none, neutral),
+			mob(brick, 64, 344, none, none, neutral),
+			mob(brick, 96, 344, none, none, neutral),
+			mob(brick, 128, 344, none, none, neutral)
 		],
-		0).
+		0,
+		level_bounds(1280, 720)).
