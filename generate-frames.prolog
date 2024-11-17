@@ -24,12 +24,32 @@ pluck_from_list([H|T], Needle, [H|Rest]):-
 % of the mob.
 
 % Units
-% 16 x 9 screen
-% 1280 x 720 abstract units
-% 
-%
-% (for comparison, NES is 240 x 240 non-square pixels)
-% Mega man standing is 72 units high by 60 units wide
+% 16:9 screen aspect ratio
+% 1280 x 720 abstract units of width and height
+% (for comparison, NES is 240 x 240 pixels, each pixel is 8:7)
+
+
+% We render 60 fps, run cycle is 12fps, so we spend five frames per sprite
+
+% We want XSpeed to be 1.375 game units per frame
+% YSpeed of a jump is 4.875 game units per frame starting, with a 0.25 game unit per frame per frame gravity
+
+anim_frame(Tick, 1):-
+	Slice #= Tick mod 20,
+	Slice in 0..4.
+
+anim_frame(Tick, 2):-
+	Slice #= Tick mod 20,
+	Slice in 5..9.
+
+anim_frame(Tick, 3):-
+	Slice #= Tick mod 20,
+	Slice in 10..14.
+
+anim_frame(Tick, 4):-
+	Slice #= Tick mod 20,
+	Slice in 15..19.
+
 
 % facing is left or right
 % mob(type_identifier, xposition, yposition, xspeed, yspeed, facing)
@@ -39,28 +59,36 @@ sprite(mob(hero, _XPosition, _YPosition, 0, 0, left), _Tick, standLeft).
 sprite(mob(hero, _XPosition, _YPosition, 0, 0, right), _Tick, standRight).
 
 sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight1):-
-	Tick mod 3 #= 0,
+	anim_frame(Tick, 1),
 	XSpeed #\= 0.
 
 sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight2):-
-	Tick mod 3 #= 1,
+	anim_frame(Tick, 2),
 	XSpeed #\= 0.
 
 sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight3):-
-	Tick mod 3 #= 2,
+	anim_frame(Tick, 3),
+	XSpeed #\= 0.
+
+sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight4):-
+	anim_frame(Tick, 4),
 	XSpeed #\= 0.
 
 sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, left), Tick, runLeft1):-
-	Tick mod 3 #= 0,
+	anim_frame(Tick, 1),
 	XSpeed #\= 0.
 
 sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, left), Tick, runLeft2):-
-	Tick mod 3 #= 1,
+	anim_frame(Tick, 2),
 	XSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, left), Tick, runLeft3):-
-	Tick mod 3 #= 2,
-	XSpeed #\= 0.
+sprite(mob(hero, _XPosition, _YPosition, Xspeed, 0, left), Tick, runleft3):-
+	anim_frame(Tick, 3),
+	Xspeed #\= 0.
+
+sprite(mob(hero, _XPosition, _YPosition, Xspeed, 0, left), Tick, runleft4):-
+	anim_frame(Tick, 4),
+	Xspeed #\= 0.
 
 sprite(mob(hero, _XPosition, _YPosition, _XSpeed, YSpeed, right), _Tick, jumpRight):-
 	YSpeed #\= 0.
@@ -78,17 +106,25 @@ sheet_geometry(hero, standLeft, 60, 72, "megaman/stand-left.png", 0, 0, 21, 24).
 
 sheet_geometry(hero, standRight, 60, 72, "megaman/stand-right.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, runLeft1, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
+% TODO: run cycle filenames are out of order and confusing.
+% TODO: Also, it's not clear what value the atom "runLeft1" really gives us.
+% TODO: Consider animation(left, sprite) or something
 
-sheet_geometry(hero, runLeft2, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
+sheet_geometry(hero, runLeft1, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runLeft3, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 24).
+sheet_geometry(hero, runLeft2, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runRight1, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
+sheet_geometry(hero, runLeft3, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runRight2, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+sheet_geometry(hero, runLeft4, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, runRight3, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 24).
+sheet_geometry(hero, runRight1, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+
+sheet_geometry(hero, runRight2, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
+
+sheet_geometry(hero, runRight3, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+
+sheet_geometry(hero, runRight4, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 24).
 
 sheet_geometry(hero, jumpLeft, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
 
@@ -145,7 +181,12 @@ write_state(Tick, State):-
 	maplist(writable_mob(Tick),
 		State,
 		Writables),
-	json_write_dict(current_output, state{tick : Tick, sprites : Writables}),
+	json_write_dict(current_output,
+		state{
+			tick : Tick,
+			sprites : Writables
+			},
+		[width(0)]),
 	nl.
 
 
@@ -157,7 +198,8 @@ game(OldState, Tick):-
 	is_endgame(OldState,
 		Tick,
 		level_bounds(1280, 720));
-Tick > 100; % timeout
+% Timeout
+Tick > 100;
 !,
 	NextTick #= Tick + 1,
 	after_physics(OldState, Tick, NewState),
