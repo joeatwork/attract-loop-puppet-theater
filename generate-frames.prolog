@@ -74,25 +74,25 @@ sprite(mob(hero, _XPosition, _YPosition, _XSpeed, YSpeed, left), _Tick, jumpLeft
 % Sprite sheet geometry
 % sheet_geometry(mobId, spriteId, widthUnits, heightUnits, sheetName, sheetOffsetX, sheetOffsetY, sheetWidth, sheetHeight)
 
-sheet_geometry(hero, standLeft, 60, 72, "megaman-sprites.png", 0, 0, 20, 24).
+sheet_geometry(hero, standLeft, 60, 72, "megaman/stand-left.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, standRight, 60, 72, "megaman-sprites.png", 20, 0, 20, 24).
+sheet_geometry(hero, standRight, 60, 72, "megaman/stand-right.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, runLeft1, 72, 66, "megaman-sprites.png", 0, 24, 24, 22).
+sheet_geometry(hero, runLeft1, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runLeft2, 48, 72, "megaman-sprites.png", 24, 24, 16, 24).
+sheet_geometry(hero, runLeft2, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runLeft3, 63, 66, "megaman-sprites.png", 40, 24, 21, 24).
+sheet_geometry(hero, runLeft3, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, runRight1, 72, 66, "megaman-sprites.png", 0, 48, 24, 22).
+sheet_geometry(hero, runRight1, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runRight2, 48, 72, "megaman-sprites.png", 24, 48, 16, 24).
+sheet_geometry(hero, runRight2, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
 
-sheet_geometry(hero, runRight3, 63, 66, "megaman-sprites.png", 40, 48, 21, 24).
+sheet_geometry(hero, runRight3, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, jumpLeft, 78, 90, "megaman-sprites.png", 0, 72, 26, 30).
+sheet_geometry(hero, jumpLeft, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
 
-sheet_geometry(hero, jumpRight, 78, 90, "megaman-sprites.png", 26, 72, 26, 30).
+sheet_geometry(hero, jumpRight, 78, 90, "megaman/jump-right.png", 0, 0, 26, 30).
 
 % TODO: Returning 
 
@@ -157,9 +157,9 @@ game(OldState, Tick):-
 	is_endgame(OldState,
 		Tick,
 		level_bounds(1280, 720));
-Tick > 100;
+Tick > 100; % timeout
 !,
-	NextTick is Tick + 1,
+	NextTick #= Tick + 1,
 	after_physics(OldState, Tick, NewState),
 	% TODO: game state is gonna be a list of sprites and positions in a viewport
 	write_state(Tick, NewState),
