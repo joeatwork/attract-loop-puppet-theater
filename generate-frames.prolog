@@ -103,6 +103,8 @@ sprite(mob(hero, _XPosition, _YPosition, _XSpeed, YSpeed, right), _Tick, jumpRig
 sprite(mob(hero, _XPosition, _YPosition, _XSpeed, YSpeed, left), _Tick, jumpLeft):-
 	YSpeed #\= 0.
 
+sprite(mob(brick, _XPosition, _YPosition, _XSpeed, _YSpeed, _Facing), _Tick, brick).
+
 % bounds(MobId, Sprite, Width, Height).
 % These are measured from the actual sprites. Metrics are in "scxreen units"
 
@@ -134,6 +136,10 @@ sheet_geometry(hero, runRight4, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 24)
 sheet_geometry(hero, jumpLeft, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
 
 sheet_geometry(hero, jumpRight, 78, 90, "megaman/jump-right.png", 0, 0, 26, 30).
+
+% Brick
+
+sheet_geometry(brick, brick, 32, 32, "placeholders/brick-16x16.png", 0, 0, 16, 16).
 
 % TODO: Returning 
 
@@ -209,5 +215,14 @@ Tick > 1000;
 	game(NewState, NextTick).
 
 test_game():-
-	game([mob(hero, 0, 0, 4, 0, right)],
+	% Need a better way to describe the initial state of a level
+	game(
+		[
+			mob(hero, 0, 0, 4, 0, right),
+			mob(brick, 0, 688, 0, 0, neutral),
+			mob(brick, 32, 688, 0, 0, neutral),
+			mob(brick, 64, 688, 0, 0, neutral),
+			mob(brick, 96, 688, 0, 0, neutral),
+			mob(brick, 128, 688, 0, 0, neutral)
+		],
 		0).
