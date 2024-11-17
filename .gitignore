@@ -1,0 +1,5 @@
+art
+*/.DS_Store
+renders/*.png
+renders/*.webm
+.vscode
