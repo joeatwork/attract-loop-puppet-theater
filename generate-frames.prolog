@@ -1,5 +1,9 @@
 #!/usr/bin/env swipl
 
+% Produces a stream of newline delimited JSON objects,
+% each of which describes an animation frame. Intended for use
+% with the `compose-frames.sh` shell script.
+
 % Constraint library for dealing with geometry and positions.
 :- use_module(library(clpfd)).
 :- use_module(library(http/json)).
@@ -12,6 +16,9 @@ main(_Argv):-
 
 % UTILS: These are probably already builtins or standard lib things,
 % but I don't know the standard library
+
+list_contains([H|_], H).
+list_contains([H|T], X):- dif(H, T), list_contains(T, X).
 
 pluck_from_list([H|T], H, T).
 
@@ -107,8 +114,6 @@ sheet_geometry(hero, standLeft, 60, 72, "megaman/stand-left.png", 0, 0, 21, 24).
 sheet_geometry(hero, standRight, 60, 72, "megaman/stand-right.png", 0, 0, 21, 24).
 
 % TODO: run cycle filenames are out of order and confusing.
-% TODO: Also, it's not clear what value the atom "runLeft1" really gives us.
-% TODO: Consider animation(left, sprite) or something
 
 sheet_geometry(hero, runLeft1, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
@@ -156,17 +161,13 @@ after_physics(OldState, _Tick, NewState):-
 is_endgame([], _Tick, _Bounds).
 
 is_endgame(State, Tick, level_bounds(LevelWidth, LevelHeight)):-
-	pluck_from_list(State,
-		mob(hero, XPosition, YPosition, XSpeed, YSpeed, Facing),
-		_Rest),
+	list_contains(State,
+		mob(hero, XPosition, YPosition, XSpeed, YSpeed, Facing)),
 	sprite(mob(hero, XPosition, YPosition, XSpeed, YSpeed, Facing),
 		Tick,
 		Sprite),
 	sheet_geometry(hero, Sprite, HeroWidth, HeroHeight, _SheetName, _SheetX, _SheetY, _SheetW, _SheetH),
-	XPosition + HeroWidth #< 0,
-	XPosition #> LevelWidth,
-	YPosition + HeroHeight #< 0,
-	YPosition #> LevelHeight.
+	( XPosition + HeroWidth #< 0;  XPosition #> LevelWidth; YPosition + HeroHeight #< 0; YPosition #> LevelHeight ).
 
 % TODO: We should know the sprite sheet geometry here
 % TODO: We should know about SCREEN geometry here, too!
@@ -199,7 +200,7 @@ game(OldState, Tick):-
 		Tick,
 		level_bounds(1280, 720));
 % Timeout
-Tick > 100;
+Tick > 1000;
 !,
 	NextTick #= Tick + 1,
 	after_physics(OldState, Tick, NewState),

@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# Requires jq, imagemagick, and ffmpeg
+# Usage:
+#
+#     ./generate-frames.prolog | ./compose-frames.sh
+#
+# Requires jq, imagemagick, and ffmpeg on PATH
 
 while read line; do
     tick=$(echo $line| jq -r '.tick')
@@ -9,6 +13,5 @@ while read line; do
     magick -size 1280x720 xc:skyblue $compositions "renders/frame_$tickname.png"
 done
 
-# TODO: This frame rate is going to be an issue
-# TODO: This should probably be 60 FPS
+# TODO: 25fps is going to end up being a pain in the ass.
 ffmpeg -framerate 25 -i "renders/frame_%04d.png" renders/video.webm
