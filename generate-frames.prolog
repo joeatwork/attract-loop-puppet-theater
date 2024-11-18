@@ -141,24 +141,100 @@ sheet_geometry(hero, jumpRight, 78, 90, "megaman/jump-right.png", 0, 0, 26, 30).
 
 sheet_geometry(brick, brick, 32, 32, "placeholders/brick-16x16.png", 0, 0, 16, 16).
 
-mob_move_x(OldX, none, _Facing, OldX).
+% TODO: This ain't right at all. Need to do hitbox testing.
+% TODO: Also, "jump if YSpeed is zero" means we'll flash a stand as we leap into an abyss...
 
-mob_move_x(OldX, XSpeed, right, NewX):-
+overlaps(box(X1, Y1, Width1, Height1), box(X2, Y2, Width2, Height2)):-
+	% We allow (exactly) shared bounds without considering them overlap
+	X1End #= X1 + Width1,
+	X2End #= X2 + Width2,
+	Y1End #= Y1 + Height1,
+	Y2End #= Y2 + Height2,
+	( between(X2, X2End, X1); between(X1, X1End, X2) ),
+	( between(Y2, Y2End, Y1); between(Y1, Y1End, Y2)). 
+
+% TODO: Fix these bugs!
+% TWO BUGS
+% - We assume we collide with only one counterpart.
+% - We assume our motion is short enough that we'll never teleport across a counterpart.
+move_collides(TargetBox, [H | L], Counterpart):-
+	(overlaps(TargetBox, H), H = Counterpart);
+	move_collides(TargetBox, L, Counterpart).
+
+move_right_until_collision(TargetBox, Collidables, DestX):-
+	move_collides(TargetBox, Collidables, box(BarrierX, _BarrierY, _BarrierW, _BarrierH)),
+	TargetBox = box(_TargetX, _TargetY, TargetWidth, _TargetHeight),
+	DestX #= (BarrierX - TargetWidth) - 1.
+
+move_left_until_collision(TargetBox, Collidables, DestX):-
+	move_collides(TargetBox, Collidables, box(BarrierX, _BarrierY, BarrierWidth, _BarrierH)),	
+	DestX #= BarrierX + BarrierWidth + 1.
+
+% Up is negative Y
+move_up_until_collision(TargetBox, Collidables, DestY):-
+	move_collides(TargetBox, Collidables, box(_BarrierX, BarrierY, _BarrierWidth, BarrierHeight)),
+	DestY #= BarrierY + BarrierHeight + 1.
+
+move_down_until_collision(TargetBox, Collidables, DestY):-
+	move_collides(TargetBox, Collidables, box(_BarrierX, BarrierY, _BarrierWidth, _BarrierHeight)),
+	TargetBox = box(_TargetX, _TargetY, _TargetWidth, TargetHeight),
+	DestY #= (BarrierY - TargetHeight) - 1.
+
+sprite_box(Tick, Mob, box(XPosition, YPosition, Width, Height)):-
+	sprite(Mob, Tick, Sprite),
+	Mob = mob(TypeId, XPosition, YPosition, _XSpeed, _YSpeed, _Facing),
+	sheet_geometry(TypeId, Sprite, Width, Height, _Sheet, _SheetX, _SheetY, _SheetWidth, _SheetHeight).
+
+mob_move_x_toward_facing(Mob, Moved):-
+	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, right),
 	integer(XSpeed),
-	NewX #= OldX + XSpeed.
+	TargetX #= XPosition + XSpeed,
+	Moved = mob(TypeId, TargetX, YPosition, XSpeed, YSpeed, right).
 
-mob_move_x(OldX, XSpeed, left, NewX):-
+mob_move_x_toward_facing(Mob, Moved):-
+	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, left),
 	integer(XSpeed),
-	NewX #= OldX - XSpeed.
+	TargetX #= XPosition - XSpeed,
+	Moved = mob(TypeId, TargetX, YPosition, XSpeed, YSpeed, left).
 
-mob_move_y(OldY, none, OldY).
 
-mob_move_y(OldY, YSpeed, NewY):-
-	NewY #= OldY + YSpeed.
+mob_move_x(Mob, _Tick, _Collidables, XPosition, none):-
+	Mob = mob(_TypeId, XPosition, _YPosition, none, _YSpeed, _Facing).
 
-mob_move(OldX, OldY, XSpeed, YSpeed, Facing, NewX, NewY):-
-	mob_move_x(OldX, XSpeed, Facing, NewX),
-	mob_move_y(OldY, YSpeed, NewY).
+mob_move_x(Mob, Tick, Collidables, NewX, NewXSpeed):-
+	% Glitch Here! We calculate collisions with the destination bounding box,
+	% But if a collision happens, we may render a different sprite!
+	mob_move_x_toward_facing(Mob, Moved),
+	sprite_box(Tick, Moved, TargetBox),
+	Moved = mob(_TypeId, TargetX, _YPosition, XSpeed, _YSpeed, Facing),
+	(
+		(Facing = right, move_right_until_collision(TargetBox, Collidables, NewX), NewXSpeed = 0);
+		(Facing = left, move_left_until_collision(TargetBox, Collidables, NewX), NewXSpeed = 0);
+		(NewX = TargetX, NewXSpeed = XSpeed)
+	).
+
+mob_move_y(Mob, _Tick, _Collidables, YPosition, none):-
+	Mob = mob(_TypeId, _XPosition, YPosition, _XSpeed, none, _Facing).	
+
+mob_move_y(Mob, Tick, Collidables, NewY, NewYSpeed):-
+	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
+	TargetY #= YPosition + YSpeed,
+	integer(YSpeed),
+
+	% Glitch Here! We calculate collisions with the destination bounding box,
+	% But if a collision happens, we may render a different sprite!
+	Moved = mob(TypeId, XPosition, TargetY, XSpeed, YSpeed, Facing),
+	sprite_box(Tick, Moved, TargetBox),
+
+	(
+		(YSpeed #> 0, move_down_until_collision(TargetBox, Collidables, NewY), NewYSpeed = 0);
+		(YSpeed #< 0, move_up_until_collision(TargetBox, Collidables, NewY), NewYSpeed = 0);
+		(TargetY = NewY, NewYSpeed = YSpeed)
+	).
+
+mob_move(Mob, Tick, Collidables, NewX, NewY, NewXSpeed, NewYSpeed):-
+	mob_move_x(Mob, Tick, Collidables, NewX, NewXSpeed),
+	mob_move_y(Mob, Tick, Collidables, NewY, NewYSpeed).
 
 % TODO: Physics and collision detection should be intertwingled;
 % in particular, what collides with what after a move
@@ -176,14 +252,13 @@ gravity([H | L], [H1 | L1]):-
 	H1 = mob(TypeId, XPosition, YPosition, XSpeed, NewSpeed, Facing),
 	gravity(L, L1).
 
-after_physics(OldState, _Tick, NewState):-
+after_physics(OldState, Tick, NewState):-
 	gravity(OldState, Accellerated),
-	pluck_from_list(Accellerated,
-		mob(hero, XPosition, YPosition, XSpeed, YSpeed, Facing),
-		RemainingState),
-	% Collide here?
-	mob_move(XPosition, YPosition, XSpeed, YSpeed, Facing, NewX, NewY),
-	NewState = [mob(hero, NewX, NewY, XSpeed, YSpeed, Facing)|RemainingState].
+	Mover = mob(hero, _XPosition, _YPosition, _XSpeed, _YSpeed, Facing),
+	pluck_from_list(Accellerated, Mover, Others),
+	maplist(sprite_box(Tick), Others, Collidables),
+	mob_move(Mover, Tick, Collidables, NewX, NewY, NewXSpeed, NewYSpeed),
+	NewState = [mob(hero, NewX, NewY, NewXSpeed, NewYSpeed, Facing)|Others].
 
 is_endgame([], _Tick, _Bounds).
 
@@ -225,13 +300,14 @@ write_state(Tick, State):-
 game(OldState, Tick, Bounds):-
 	is_endgame(OldState, Tick, Bounds);
 % Timeout
-Tick > 1000;
+Tick > 100;
 !,
 	NextTick #= Tick + 1,
 	after_physics(OldState, Tick, NewState),
 	% TODO: game state is gonna be a list of sprites and positions in a viewport
 	write_state(Tick, NewState),
-	game(NewState, NextTick, Bounds).
+
+	( OldState = NewState; game(NewState, NextTick, Bounds)).
 
 test_game():-
 	% Need a better way to describe the initial state of a level
