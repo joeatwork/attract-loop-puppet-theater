@@ -161,24 +161,20 @@ move_collides(TargetBox, [H | L], Counterpart):-
 	(overlaps(TargetBox, H), H = Counterpart);
 	move_collides(TargetBox, L, Counterpart).
 
-move_right_until_collision(TargetBox, Collidables, DestX):-
-	move_collides(TargetBox, Collidables, box(BarrierX, _BarrierY, _BarrierW, _BarrierH)),
-	TargetBox = box(_TargetX, _TargetY, TargetWidth, _TargetHeight),
-	DestX #= (BarrierX - TargetWidth) - 1.
+move_right_until_collision(TargetBox, Collidables, LeftBarrier):-
+	move_collides(TargetBox, Collidables, box(LeftBarrier, _BarrierY, _BarrierW, _BarrierH)).
 
-move_left_until_collision(TargetBox, Collidables, DestX):-
+move_left_until_collision(TargetBox, Collidables, RightBarrier):-
 	move_collides(TargetBox, Collidables, box(BarrierX, _BarrierY, BarrierWidth, _BarrierH)),	
-	DestX #= BarrierX + BarrierWidth + 1.
+	RightBarrier #= BarrierX + BarrierWidth.
 
 % Up is negative Y
-move_up_until_collision(TargetBox, Collidables, DestY):-
+move_up_until_collision(TargetBox, Collidables, BarrierAbove):-
 	move_collides(TargetBox, Collidables, box(_BarrierX, BarrierY, _BarrierWidth, BarrierHeight)),
-	DestY #= BarrierY + BarrierHeight + 1.
+	BarrierAbove #= BarrierY + BarrierHeight.
 
-move_down_until_collision(TargetBox, Collidables, DestY):-
-	move_collides(TargetBox, Collidables, box(_BarrierX, BarrierY, _BarrierWidth, _BarrierHeight)),
-	TargetBox = box(_TargetX, _TargetY, _TargetWidth, TargetHeight),
-	DestY #= (BarrierY - TargetHeight) - 1.
+move_down_until_collision(TargetBox, Collidables, BarrierBelow):-
+	move_collides(TargetBox, Collidables, box(_BarrierX, BarrierBelow, _BarrierWidth, _BarrierHeight)).
 
 sprite_box(Tick, Mob, box(XPosition, YPosition, Width, Height)):-
 	sprite(Mob, Tick, Sprite),
@@ -198,43 +194,61 @@ mob_move_x_toward_facing(Mob, Moved):-
 	Moved = mob(TypeId, TargetX, YPosition, XSpeed, YSpeed, left).
 
 
-mob_move_x(Mob, _Tick, _Collidables, XPosition, none):-
-	Mob = mob(_TypeId, XPosition, _YPosition, none, _YSpeed, _Facing).
+mob_move_x(Mob, _Tick, _Collidables, Mob):-
+	Mob = mob(_TypeId, _XPosition, _YPosition, none, _YSpeed, _Facing).
 
-mob_move_x(Mob, Tick, Collidables, NewX, NewXSpeed):-
-	% Glitch Here! We calculate collisions with the destination bounding box,
-	% But if a collision happens, we may render a different sprite!
-	mob_move_x_toward_facing(Mob, Moved),
-	sprite_box(Tick, Moved, TargetBox),
-	Moved = mob(_TypeId, TargetX, _YPosition, XSpeed, _YSpeed, Facing),
+mob_move_x(Mob, Tick, Collidables, Moved):-
+	mob_move_x_toward_facing(Mob, MoveTarget),
+	sprite_box(Tick, MoveTarget, TargetBox),
+	MoveTarget = mob(TypeId, _TargetX, YPosition, _XSpeed, YSpeed, Facing),
 	(
-		(Facing = right, move_right_until_collision(TargetBox, Collidables, NewX), NewXSpeed = 0);
-		(Facing = left, move_left_until_collision(TargetBox, Collidables, NewX), NewXSpeed = 0);
-		(NewX = TargetX, NewXSpeed = XSpeed)
+		(
+			Facing = right,
+			move_right_until_collision(TargetBox, Collidables, LeftBarrier),
+			Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing),
+			sprite_box(Tick, Moved, box(FinalX, _Y, Width, _Height)),
+			FinalX #= LeftBarrier - Width
+		);
+		(
+			Facing = left, 
+			move_left_until_collision(TargetBox, Collidables, RightBarrier),
+			Moved = mob(TypeId, RightBarrier, YPosition, 0, YSpeed, Facing)
+		);
+		(Moved = MoveTarget)
 	).
 
-mob_move_y(Mob, _Tick, _Collidables, YPosition, none):-
-	Mob = mob(_TypeId, _XPosition, YPosition, _XSpeed, none, _Facing).	
+mob_move_y(Mob, _Tick, _Collidables, Mob):-
+	Mob = mob(_TypeId, _XPosition, _YPosition, _XSpeed, none, _Facing).	
 
-mob_move_y(Mob, Tick, Collidables, NewY, NewYSpeed):-
+mob_move_y(Mob, Tick, Collidables, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
 	TargetY #= YPosition + YSpeed,
 	integer(YSpeed),
 
 	% Glitch Here! We calculate collisions with the destination bounding box,
 	% But if a collision happens, we may render a different sprite!
-	Moved = mob(TypeId, XPosition, TargetY, XSpeed, YSpeed, Facing),
-	sprite_box(Tick, Moved, TargetBox),
+	TargetMove = mob(TypeId, XPosition, TargetY, XSpeed, YSpeed, Facing),
+	sprite_box(Tick, TargetMove, TargetBox),
 
 	(
-		(YSpeed #> 0, move_down_until_collision(TargetBox, Collidables, NewY), NewYSpeed = 0);
-		(YSpeed #< 0, move_up_until_collision(TargetBox, Collidables, NewY), NewYSpeed = 0);
-		(TargetY = NewY, NewYSpeed = YSpeed)
+		(
+			YSpeed #> 0,
+			move_down_until_collision(TargetBox, Collidables, BarrierBelow),
+			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing),
+			FinalY #= BarrierBelow - Height,
+			sprite_box(Tick, Moved, box(_X, FinalY, _Width, Height))
+		);
+		(
+			YSpeed #< 0,
+			move_up_until_collision(TargetBox, Collidables, BarrierAbove),
+			Moved = mob(TypeId, XPosition, BarrierAbove, XSpeed, 0, Facing)
+		);
+		(Moved = TargetMove)
 	).
 
-mob_move(Mob, Tick, Collidables, NewX, NewY, NewXSpeed, NewYSpeed):-
-	mob_move_x(Mob, Tick, Collidables, NewX, NewXSpeed),
-	mob_move_y(Mob, Tick, Collidables, NewY, NewYSpeed).
+mob_move(Mob, Tick, Collidables, Moved):-
+	mob_move_x(Mob, Tick, Collidables, XMoved),
+	mob_move_y(XMoved, Tick, Collidables, Moved).
 
 % TODO: Physics and collision detection should be intertwingled;
 % in particular, what collides with what after a move
@@ -254,11 +268,11 @@ gravity([H | L], [H1 | L1]):-
 
 after_physics(OldState, Tick, NewState):-
 	gravity(OldState, Accellerated),
-	Mover = mob(hero, _XPosition, _YPosition, _XSpeed, _YSpeed, Facing),
+	Mover = mob(hero, _XPosition, _YPosition, _XSpeed, _YSpeed, _Facing),
 	pluck_from_list(Accellerated, Mover, Others),
 	maplist(sprite_box(Tick), Others, Collidables),
-	mob_move(Mover, Tick, Collidables, NewX, NewY, NewXSpeed, NewYSpeed),
-	NewState = [mob(hero, NewX, NewY, NewXSpeed, NewYSpeed, Facing)|Others].
+	mob_move(Mover, Tick, Collidables, Moved),
+	NewState = [Moved|Others].
 
 is_endgame([], _Tick, _Bounds).
 
