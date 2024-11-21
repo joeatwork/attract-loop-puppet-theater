@@ -304,7 +304,7 @@ is_endgame(State, Tick, level_bounds(LevelWidth, LevelHeight)):-
 		Tick,
 		Sprite),
 	sheet_geometry(hero, Sprite, HeroWidth, HeroHeight, _SheetName, _SheetX, _SheetY, _SheetW, _SheetH),
-	( XPosition + HeroWidth #< 0;  XPosition #> LevelWidth; YPosition + HeroHeight #< 0; YPosition #> LevelHeight ).
+	( XPosition + HeroWidth #< 0;  XPosition #> LevelWidth; YPosition #< 0; YPosition #> LevelHeight + HeroHeight ).
 
 % TODO: We should know the sprite sheet geometry here
 % TODO: We should know about SCREEN geometry here, too!
