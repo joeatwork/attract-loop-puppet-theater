@@ -6,7 +6,7 @@
 #
 # Requires jq, imagemagick, and ffmpeg on PATH
 
-while read line; do
+grep -v "^#" | while read line; do
     tick=$(echo $line| jq -r '.tick')
     tickname=$(printf "%04d" "$tick")
     compositions=$(echo $line | jq -r '.sprites[] | "( sprites/\(.sheet) -filter point -resize \(.level_width)x\(.level_height) ) -gravity northwest -geometry +\(.level_x)+\(.level_y) -composite"')

@@ -141,6 +141,12 @@ sprite(mob(hero, _XPosition, _YPosition, _XSpeed, YSpeed, left), _Tick, jumpLeft
 sprite(mob(brick, _XPosition, _YPosition, _XSpeed, _YSpeed, _Facing), _Tick, brick).
 
 
+box_top(box(_Left, Top, _Width, _Height), Top).
+box_bottom(box(_Left, Top, _Width, Height), Bottom):-
+	Bottom #= Top + Height.
+box_left(box(Left, _Top, _Width, _Height), Left).
+box_right(box(Left, _Top, Width, _Height), Right):-
+	Right #= Left + Width.
 
 overlaps(box(Left1, Top1, Width1, Height1), box(Left2, Top2, Width2, Height2)):-
 	% We allow (exactly) shared bounds without considering them overlap
@@ -155,23 +161,37 @@ overlaps(box(Left1, Top1, Width1, Height1), box(Left2, Top2, Width2, Height2)):-
 % TWO BUGS
 % - We assume we collide with only one counterpart.
 % - We assume our motion is short enough that we'll never teleport across a counterpart.
-collision(TargetBox, OtherBoxes, Counterpart):-
-	include(overlaps(TargetBox), OtherBoxes, [Counterpart| _]).
+collisions(TargetBox, OtherBoxes, Collisions):-
+	include(overlaps(TargetBox), OtherBoxes, Collisions).
+
+minimum_absolute_delta(Target, Other1, Other2, Min):-
+	D1 #= Target - Other1,
+	D2 #= Target - Other2,
+	min(abs(D1), abs(D2), Min).
 
 move_right_until_collision(TargetBox, Collidables, LeftBarrier):-
-	collision(TargetBox, Collidables, box(LeftBarrier, _BarrierY, _BarrierW, _BarrierH)).
+	collisions(TargetBox, Collidables, Collisions),
+	maplist(box_left(), Collisions, [Lft | LftList]),
+	box_right(TargetBox, Frontier),
+	foldl(minimum_absolute_delta(Frontier), LftList, Lft, LeftBarrier).
 
 move_left_until_collision(TargetBox, Collidables, RightBarrier):-
-	collision(TargetBox, Collidables, box(BarrierX, _BarrierY, BarrierWidth, _BarrierH)),	
-	RightBarrier #= BarrierX + BarrierWidth.
+	collisions(TargetBox, Collidables, Collisions),
+	maplist(box_right(), Collisions, [Rt | RtList ]),
+	box_left(TargetBox, Frontier),
+	foldl(minimum_absolute_delta(Frontier), RtList, Rt, RightBarrier).
 
-% Up is negative Y
 move_up_until_collision(TargetBox, Collidables, BarrierAbove):-
-	collision(TargetBox, Collidables, box(_BarrierX, BarrierY, _BarrierWidth, BarrierHeight)),
-	BarrierAbove #= BarrierY + BarrierHeight.
+	collisions(TargetBox, Collidables, Collisions),
+	maplist(box_bottom(), Collisions, [Btm|BtmList]),
+	box_top(TargetBox, Frontier),
+	foldl(minimum_absolute_delta(Frontier), BtmList, Btm, BarrierAbove).
 
 move_down_until_collision(TargetBox, Collidables, BarrierBelow):-
-	collision(TargetBox, Collidables, box(_BarrierX, BarrierBelow, _BarrierWidth, _BarrierHeight)).
+	collisions(TargetBox, Collidables, Collisions),
+	maplist(box_top(), Collisions, [Top|TopList]),
+	box_bottom(TargetBox, Frontier),
+	foldl(minimum_absolute_delta(Frontier), TopList, Top, BarrierBelow).
 
 % Wrinkle - 
 sprite_box(Tick, Mob, box(XPosition, BoxY, Width, Height)):-
@@ -232,16 +252,16 @@ mob_move_y(Mob, Tick, Collidables, Moved):-
 
 	(
 		(
-			YSpeed #> 0,
 			move_down_until_collision(TargetBox, Collidables, BarrierBelow),
-			FinalY #= BarrierBelow + 1,
+			YSpeed #> 0,
+			FinalY #= BarrierBelow - 1,
 			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
 		);
 		(
-			YSpeed #< 0,
 			move_up_until_collision(TargetBox, Collidables, BarrierAbove),
-			sprite_box(Tick, Moved, box(_X, FinalY, _Width, Height)),
-			FinalY #= BarrierAbove + Height - 1,
+			YSpeed #< 0,
+			sprite_box(Tick, Moved, box(_X, _Y, _Width, Height)),
+			FinalY #= BarrierAbove + Height + 1,
 			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
 		);
 		(Moved = TargetMove)
@@ -320,9 +340,9 @@ game(OldState, Tick, Bounds):-
 % Timeout
 Tick > 100;
 !,
-	NextTick #= Tick + 1,
 	after_physics(OldState, Tick, NewState),
-	% TODO: game state is gonna be a list of sprites and positions in a viewport
+	NextTick #= Tick + 1,
+	write(current_output, "# "), write(current_output, gamestate(NewState, NextTick)), nl,
 	write_state(Tick, NewState),
 
 	( OldState = NewState; game(NewState, NextTick, Bounds)).
@@ -332,11 +352,14 @@ test_game():-
 	game(
 		[
 			mob(hero, 0, 100, 4, 0, right),
-			mob(brick, 0, 344, none, none, neutral),
-			mob(brick, 32, 344, none, none, neutral),
-			mob(brick, 64, 344, none, none, neutral),
-			mob(brick, 96, 344, none, none, neutral),
-			mob(brick, 128, 344, none, none, neutral)
+			mob(brick, 96, 344, none, none, neutral)
 		],
 		0,
 		level_bounds(1280, 720)).
+
+
+:- begin_tests(game).
+
+
+
+:- end_tests(game).
