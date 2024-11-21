@@ -355,7 +355,7 @@ write_state(Tick, State):-
 game(OldState, Tick, Bounds):-
 	is_endgame(OldState, Tick, Bounds);
 % Timeout
-Tick > 100;
+Tick > 1000;
 !,
 	after_physics(OldState, Tick, NewState),
 	NextTick #= Tick + 1,
