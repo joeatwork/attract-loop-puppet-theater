@@ -1,4 +1,5 @@
 art
+.DS_Store
 */.DS_Store
 renders/*.png
 renders/*.webm
