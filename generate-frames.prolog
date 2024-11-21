@@ -61,6 +61,13 @@ anim_frame(Tick, 4):-
 % Sprite sheet geometry
 % sheet_geometry(mobId, spriteId, widthUnits, heightUnits, sheetName, sheetOffsetX, sheetOffsetY, sheetWidth, sheetHeight)
 
+sprite_height(TypeId, Sprite, Height):-
+	sheet_geometry(TypeId, Sprite, _Width, Height, _SheetName, _SheetOffsetX, _SheetOffsetY, _SheetWidth, _SheetHeight).
+
+sprite_width(TypeId, Sprite, Width):-
+	sheet_geometry(TypeId, Sprite, Width, _Height, _SheetName, _SheetOffsetX, _SheetOffsetY, _SheetWidth, _SheetHeight).
+	
+
 sheet_geometry(hero, standLeft, 60, 72, "megaman/stand-left.png", 0, 0, 21, 24).
 
 sheet_geometry(hero, standRight, 60, 72, "megaman/stand-right.png", 0, 0, 21, 24).
@@ -94,51 +101,55 @@ sheet_geometry(brick, brick, 32, 32, "placeholders/brick-16x16.png", 0, 0, 16, 1
 % mob(type_identifier, xposition, yposition, xspeed, yspeed, facing)
 % xposition and yposition are abstract, but probably the bottom left corner of the sprite
 
-sprite(mob(hero, _XPosition, _YPosition, 0, 0, left), _Tick, standLeft).
+sprite_sheet(hero, 0, 0, left, _Tick, standLeft).
 
-sprite(mob(hero, _XPosition, _YPosition, 0, 0, right), _Tick, standRight).
+sprite_sheet(hero, 0, 0, right, _Tick, standRight).
 
-sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight1):-
+sprite_sheet(hero, XSpeed, 0, right, Tick, runRight1):-
 	anim_frame(Tick, 1),
 	XSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight2):-
+sprite_sheet(hero, XSpeed, 0, right, Tick, runRight2):-
 	anim_frame(Tick, 2),
 	XSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight3):-
+sprite_sheet(hero, XSpeed, 0, right, Tick, runRight3):-
 	anim_frame(Tick, 3),
 	XSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, right), Tick, runRight4):-
+sprite_sheet(hero, XSpeed, 0, right, Tick, runRight4):-
 	anim_frame(Tick, 4),
 	XSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, left), Tick, runLeft1):-
+sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft1):-
 	anim_frame(Tick, 1),
 	XSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, XSpeed, 0, left), Tick, runLeft2):-
+sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft2):-
 	anim_frame(Tick, 2),
 	XSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, Xspeed, 0, left), Tick, runleft3):-
+sprite_sheet(hero, XSpeed, 0, left, Tick, runleft3):-
 	anim_frame(Tick, 3),
-	Xspeed #\= 0.
+	XSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, Xspeed, 0, left), Tick, runleft4):-
+sprite_sheet(hero, XSpeed, 0, left, Tick, runleft4):-
 	anim_frame(Tick, 4),
-	Xspeed #\= 0.
+	XSpeed #\= 0.
 
 % BUG: "jump if Yspeed #\= 0" means we have a weird stand at the top of the jump?
 
-sprite(mob(hero, _XPosition, _YPosition, _XSpeed, YSpeed, right), _Tick, jumpRight):-
+sprite_sheet(hero, _XSpeed, YSpeed, right, _Tick, jumpRight):-
 	YSpeed #\= 0.
 
-sprite(mob(hero, _XPosition, _YPosition, _XSpeed, YSpeed, left), _Tick, jumpLeft):-
+sprite_sheet(hero, _XSpeed, YSpeed, left, _Tick, jumpLeft):-
 	YSpeed #\= 0.
 
-sprite(mob(brick, _XPosition, _YPosition, _XSpeed, _YSpeed, _Facing), _Tick, brick).
+sprite_sheet(brick, _XSpeed, _YSpeed, _Facing, _Tick, brick).
+
+
+sprite(mob(TypeId, _XPosition, _YPosition, XSpeed, YSpeed, Facing), Tick, SheetId):-
+	sprite_sheet(TypeId, XSpeed, YSpeed, Facing, Tick, SheetId).
 
 
 box_top(box(_Left, Top, _Width, _Height), Top).
@@ -164,10 +175,15 @@ overlaps(box(Left1, Top1, Width1, Height1), box(Left2, Top2, Width2, Height2)):-
 collisions(TargetBox, OtherBoxes, Collisions):-
 	include(overlaps(TargetBox), OtherBoxes, Collisions).
 
+min_pair(K1-V1, K2-V2, K-V):-
+	(K1 #< K2, K=K1, V=V1);
+	(K=K2, V=V2).
+
+
 minimum_absolute_delta(Target, Other1, Other2, Min):-
-	D1 #= Target - Other1,
-	D2 #= Target - Other2,
-	min(abs(D1), abs(D2), Min).
+	AD1 #= abs(Target - Other1),
+	AD2 #= abs(Target - Other2),
+	min_pair(AD1-Other1, AD2-Other2, _Abs-Min).
 
 move_right_until_collision(TargetBox, Collidables, LeftBarrier):-
 	collisions(TargetBox, Collidables, Collisions),
@@ -193,7 +209,6 @@ move_down_until_collision(TargetBox, Collidables, BarrierBelow):-
 	box_bottom(TargetBox, Frontier),
 	foldl(minimum_absolute_delta(Frontier), TopList, Top, BarrierBelow).
 
-% Wrinkle - 
 sprite_box(Tick, Mob, box(XPosition, BoxY, Width, Height)):-
 	sprite(Mob, Tick, Sprite),
 	Mob = mob(TypeId, XPosition, YPosition, _XSpeed, _YSpeed, _Facing),
@@ -225,9 +240,10 @@ mob_move_x(Mob, Tick, Collidables, Moved):-
 		(
 			Facing = right,
 			move_right_until_collision(TargetBox, Collidables, LeftBarrier),
-			Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing),
-			sprite_box(Tick, Moved, box(FinalX, _Y, Width, _Height)),
-			FinalX #= LeftBarrier - Width
+			sprite_sheet(TypeId, 0, YSpeed, Facing, Tick, Sprite),
+			sprite_width(TypeId, Sprite, Width),
+			FinalX #= LeftBarrier - Width,
+			Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing)
 		);
 		(
 			Facing = left, 
@@ -260,7 +276,8 @@ mob_move_y(Mob, Tick, Collidables, Moved):-
 		(
 			move_up_until_collision(TargetBox, Collidables, BarrierAbove),
 			YSpeed #< 0,
-			sprite_box(Tick, Moved, box(_X, _Y, _Width, Height)),
+			sprite_sheet(TypeId, XSpeed, 0, Tick, Facing, Sprite),
+			sprite_height(TypeId, Sprite, Height),
 			FinalY #= BarrierAbove + Height + 1,
 			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
 		);
@@ -352,7 +369,13 @@ test_game():-
 	game(
 		[
 			mob(hero, 0, 100, 4, 0, right),
-			mob(brick, 96, 344, none, none, neutral)
+			mob(brick, 96, 344, none, none, neutral),
+			mob(brick, 128, 344, none, none, neutral),
+			mob(brick, 160, 344, none, none, neutral),
+			mob(brick, 192, 444, none, none, neutral),
+			mob(brick, 224, 444, none, none, neutral),
+			mob(brick, 256, 444, none, none, neutral),
+			mob(brick, 288, 444, none, none, neutral)
 		],
 		0,
 		level_bounds(1280, 720)).
@@ -360,6 +383,15 @@ test_game():-
 
 :- begin_tests(game).
 
+minimum_absolute_delta(331, 312, 312, 312).
 
+sprite_box(20, mob(brick, 96, 344, none, none, neutral), box(96, 312, 32, 32)).
+
+mob_move_y(mob(hero, 84, 310, 4, 21, right), 20, [box(96, 312, 32, 32), box(128, 312, 32, 32)], mob(hero, 84, 311, 4, 0, right)).
+
+after_physics(
+	[mob(hero,80,310,4,20,right),mob(brick,96,344,none,none,neutral)],20,
+	[mob(hero, 84, 311, 4, 0, right), mob(brick, 96, 344, none, none, neutral)]
+	).
 
 :- end_tests(game).
