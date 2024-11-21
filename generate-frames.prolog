@@ -14,17 +14,6 @@
 main(_Argv):-
 	test_game().
 
-% UTILS: These are probably already builtins or standard lib things,
-% but I don't know the standard library
-
-list_contains([H|_], H).
-list_contains([H|T], X):- dif(H, T), list_contains(T, X).
-
-pluck_from_list([H|T], H, T).
-
-pluck_from_list([H|T], Needle, [H|Rest]):-
-	pluck_from_list(T, Needle, Rest).
-
 % Y speed is positive toward the bottom of the screen and negative
 % toward the top of the screen.
 % X speed of a mob is always positive, and is modified by the facing
@@ -100,6 +89,8 @@ sheet_geometry(brick, brick, 32, 32, "placeholders/brick-16x16.png", 0, 0, 16, 1
 % facing is left, right, or none
 % mob(type_identifier, xposition, yposition, xspeed, yspeed, facing)
 % xposition and yposition are abstract, but probably the bottom left corner of the sprite
+
+mob_type(TypeId, mob(TypeId, _Left, _Bottom, _XSpeed, _YSpeed, _Facing)).
 
 sprite_sheet(hero, 0, 0, left, _Tick, standLeft).
 
@@ -178,7 +169,6 @@ collisions(TargetBox, OtherBoxes, Collisions):-
 min_pair(K1-V1, K2-V2, K-V):-
 	(K1 #< K2, K=K1, V=V1);
 	(K=K2, V=V2).
-
 
 minimum_absolute_delta(Target, Other1, Other2, Min):-
 	AD1 #= abs(Target - Other1),
@@ -306,37 +296,71 @@ gravity([H | L], [H1 | L1]):-
 
 after_physics(OldState, Tick, NewState):-
 	gravity(OldState, Accellerated),
-	Mover = mob(hero, _XPosition, _YPosition, _XSpeed, _YSpeed, _Facing),
-	pluck_from_list(Accellerated, Mover, Others),
+	partition(mob_type(hero), Accellerated, [Mover], Others),
 	maplist(sprite_box(Tick), Others, Collidables),
 	mob_move(Mover, Tick, Collidables, Moved),
 	NewState = [Moved|Others].
 
 is_endgame([], _Tick, _Bounds).
 
-is_endgame(State, Tick, level_bounds(LevelWidth, LevelHeight)):-
-	list_contains(State,
-		mob(hero, XPosition, YPosition, XSpeed, YSpeed, Facing)),
-	sprite(mob(hero, XPosition, YPosition, XSpeed, YSpeed, Facing),
-		Tick,
-		Sprite),
-	sheet_geometry(hero, Sprite, HeroWidth, HeroHeight, _SheetName, _SheetX, _SheetY, _SheetW, _SheetH),
-	( XPosition + HeroWidth #< 0;  XPosition #> LevelWidth; YPosition #< 0; YPosition #> LevelHeight + HeroHeight ).
+is_endgame(State, Tick, level_dimensions(LevelWidth, LevelHeight)):-
+	include(mob_type(hero), State, [Hero]),
+	sprite_box(Tick, Hero, box(Left, Top, Width, Height)),
+	( Left + Width #< 0;  Left #> LevelWidth; Top + Height #< 0; Top #> LevelHeight ).
 
-% TODO: We should know the sprite sheet geometry here
-% TODO: We should know about SCREEN geometry here, too!
+% We center the viewport on the hero's left heel, which is
+% not actually what we want (but we probably want some *constant offset*
+% from the left heel)
+viewport_follows_hero(Mobs, level_dimensions(LevelWidth, LevelHeight), viewport(VLeft, VTop, VWidth, VHeight)):-
+	include(mob_type(hero), Mobs, [mob(hero, HeroLeft, HeroBottom, _XSpeed, _YSpeed, _Facing)]),
+	HalfVWidth #= div(VWidth, 2),
+	HalfVHeight #= div(VHeight, 2),
+	CenteredLeft #= HeroLeft - HalfVWidth,
+	CenteredTop #= HeroBottom - HalfVHeight,
+	(
+		(CenteredLeft #< 0, VLeft = 0);
+		(CenteredLeft + VWidth #> LevelWidth, VLeft = LevelWidth - VWidth);
+		VLeft = CenteredLeft
+	),
+	(
+		(CenteredTop #< 0, VTop = 0);
+		(CenteredTop + VHeight #> LevelHeight, VTop = LevelHeight - VHeight);
+		VTop = CenteredTop
+	).
+			
 
-writable_mob(Tick, mob(TypeId, XPosition, BottomYPosition, XSpeed, YSpeed, Facing), writable{type_id:TypeId, sprite:Sprite, level_x:XPosition, level_y:TopYPosition, level_width:LevelWidth, level_height:LevelHeight, sheet:SheetName, sheet_x:SheetX, sheet_y:SheetY, sheet_width:SheetWidth, sheet_height:SheetHeight}):-
-	sprite(mob(TypeId, XPosition, BottomYPosition, XSpeed, YSpeed, Facing),
-		Tick,
-		Sprite),
+
+writable_mob(Tick, Viewport, Mob, Write):-
+	% TODO: this should be a read of sprite_box
+	Mob = mob(TypeId, XPosition, BottomYPosition, _XSpeed, _YSpeed, _Facing),
+	sprite(Mob, Tick, Sprite),
 	sheet_geometry(TypeId, Sprite, LevelWidth, LevelHeight, SheetName, SheetX, SheetY, SheetWidth, SheetHeight),
 	% game geometry positions things at their bottom left corners, but
 	% the renderer needs top left corners
-	TopYPosition #= BottomYPosition - LevelHeight.
+	TopYPosition #= BottomYPosition - LevelHeight,
 
-write_state(Tick, State):-
-	maplist(writable_mob(Tick),
+	Viewport = viewport(VLeft, VTop, _VWidth, _VHeight),
+
+	% TODO: Cull stuff that isn't in the viewport
+	ViewportX #= XPosition - VLeft,
+	ViewportY #= TopYPosition - VTop,
+
+	Write =  writable{
+		type_id:TypeId,
+		sprite:Sprite,
+		viewport_x: ViewportX,
+		viewport_y: ViewportY,
+		level_width:LevelWidth,
+		level_height:LevelHeight,
+		sheet:SheetName,
+		sheet_x:SheetX,
+		sheet_y:SheetY,
+		sheet_width:SheetWidth,
+		sheet_height:SheetHeight
+	}.
+
+write_state(Tick, Viewport, State):-
+	maplist(writable_mob(Tick, Viewport),
 		State,
 		Writables),
 	json_write_dict(current_output,
@@ -347,22 +371,23 @@ write_state(Tick, State):-
 		[width(0)]),
 	nl.
 
-
-% Right now, game state is just a list of Mobs
-
 % A game produces "done" after writing a list of frames
 
-game(OldState, Tick, Bounds):-
-	is_endgame(OldState, Tick, Bounds);
-% Timeout
-Tick > 1000;
-!,
+game(OldState, Tick, LevelDimensions, ViewportDimensions):-
+	is_endgame(OldState, Tick, LevelDimensions);
+	Tick > 1000;
+	!,
 	after_physics(OldState, Tick, NewState),
-	NextTick #= Tick + 1,
-	write(current_output, "# "), write(current_output, gamestate(NewState, NextTick)), nl,
-	write_state(Tick, NewState),
+	ViewportDimensions = viewport_dimensions(VWidth, VHeight),
+	Viewport = viewport(_VLeft, _VTop, VWidth, VHeight),
+	viewport_follows_hero(OldState, LevelDimensions, Viewport),
+	write(current_output, "## VIEWPORT: "), write(current_output, Viewport), nl,
 
-	( OldState = NewState; game(NewState, NextTick, Bounds)).
+	NextTick #= Tick + 1,
+	write(current_output, "# "), write(current_output, next_state(NewState, NextTick)), nl,
+	write_state(Tick, Viewport, NewState),
+
+	( OldState = NewState; game(NewState, NextTick, LevelDimensions, ViewportDimensions)).
 
 test_game():-
 	% Need a better way to describe the initial state of a level
@@ -378,7 +403,8 @@ test_game():-
 			mob(brick, 288, 444, none, none, neutral)
 		],
 		0,
-		level_bounds(1280, 720)).
+		level_dimensions(1280, 1280),
+		viewport_dimensions(1280, 720)).
 
 
 :- begin_tests(game).
