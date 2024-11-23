@@ -10,6 +10,8 @@
 :- use_module(library(main)).
 
 :- use_module(prolog/assets).
+:- use_module(prolog/goal_agent).
+:- use_module(prolog/mobs).
 
 :- initialization(main, main).
 
@@ -25,93 +27,6 @@ main(_Argv):-
 % 16:9 screen aspect ratio
 % 1280 x 720 abstract units of width and height
 % (for comparison, NES is 240 x 240 pixels, each pixel is 8:7)
-
-% We render 25 fps, run cycle is 5 frames per sprite.
-
-% We want XSpeed to be 4 game units per frame (megaman is 4.125 units per frame)
-% YSpeed of a jump is 14 game units per frame starting, with a 1 game unit per frame per frame gravity
-%    (megaman jump is 14.625 units / frame)
-
-anim_frame(Tick, 1):-
-	Slice #= Tick mod 20,
-	Slice in 0..4.
-
-anim_frame(Tick, 2):-
-	Slice #= Tick mod 20,
-	Slice in 5..9.
-
-anim_frame(Tick, 3):-
-	Slice #= Tick mod 20,
-	Slice in 10..14.
-
-anim_frame(Tick, 4):-
-	Slice #= Tick mod 20,
-	Slice in 15..19.
-
-
-% Sprite sheet geometry
-% sheet_geometry(mobId, spriteId, widthUnits, heightUnits, sheetName, sheetOffsetX, sheetOffsetY, sheetWidth, sheetHeight)
-
-sprite_height(TypeId, Sprite, Height):-
-	sheet_geometry(TypeId, Sprite, _Width, Height, _SheetName, _SheetOffsetX, _SheetOffsetY, _SheetWidth, _SheetHeight).
-
-sprite_width(TypeId, Sprite, Width):-
-	sheet_geometry(TypeId, Sprite, Width, _Height, _SheetName, _SheetOffsetX, _SheetOffsetY, _SheetWidth, _SheetHeight).
-
-% facing is left, right, or none
-% mob(type_identifier, xposition, yposition, xspeed, yspeed, facing)
-% xposition and yposition are abstract, but probably the bottom left corner of the sprite
-
-mob_type(TypeId, mob(TypeId, _Left, _Bottom, _XSpeed, _YSpeed, _Facing)).
-
-sprite_sheet(hero, 0, 0, left, _Tick, standLeft).
-
-sprite_sheet(hero, 0, 0, right, _Tick, standRight).
-
-sprite_sheet(hero, XSpeed, 0, right, Tick, runRight1):-
-	anim_frame(Tick, 1),
-	XSpeed #\= 0.
-
-sprite_sheet(hero, XSpeed, 0, right, Tick, runRight2):-
-	anim_frame(Tick, 2),
-	XSpeed #\= 0.
-
-sprite_sheet(hero, XSpeed, 0, right, Tick, runRight3):-
-	anim_frame(Tick, 3),
-	XSpeed #\= 0.
-
-sprite_sheet(hero, XSpeed, 0, right, Tick, runRight4):-
-	anim_frame(Tick, 4),
-	XSpeed #\= 0.
-
-sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft1):-
-	anim_frame(Tick, 1),
-	XSpeed #\= 0.
-
-sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft2):-
-	anim_frame(Tick, 2),
-	XSpeed #\= 0.
-
-sprite_sheet(hero, XSpeed, 0, left, Tick, runleft3):-
-	anim_frame(Tick, 3),
-	XSpeed #\= 0.
-
-sprite_sheet(hero, XSpeed, 0, left, Tick, runleft4):-
-	anim_frame(Tick, 4),
-	XSpeed #\= 0.
-
-% BUG: "jump if Yspeed #\= 0" means we have a weird stand at the top of the jump?
-
-sprite_sheet(hero, _XSpeed, YSpeed, right, _Tick, jumpRight):-
-	YSpeed #\= 0.
-
-sprite_sheet(hero, _XSpeed, YSpeed, left, _Tick, jumpLeft):-
-	YSpeed #\= 0.
-
-sprite_sheet(brick, _XSpeed, _YSpeed, _Facing, _Tick, brick).
-
-sprite(mob(TypeId, _XPosition, _YPosition, XSpeed, YSpeed, Facing), Tick, SheetId):-
-	sprite_sheet(TypeId, XSpeed, YSpeed, Facing, Tick, SheetId).
 
 
 box_top(box(_Left, Top, _Width, _Height), Top).
@@ -130,10 +45,6 @@ overlaps(box(Left1, Top1, Width1, Height1), box(Left2, Top2, Width2, Height2)):-
 	( between(Left2, Left2End, Left1); between(Left1, Left1End, Left2) ),
 	( between(Top2, Top2End, Top1); between(Top1, Top1End, Top2)). 
 
-% TODO: Fix these bugs!
-% TWO BUGS
-% - We assume we collide with only one counterpart.
-% - We assume our motion is short enough that we'll never teleport across a counterpart.
 collisions(TargetBox, OtherBoxes, Collisions):-
 	include(overlaps(TargetBox), OtherBoxes, Collisions).
 
@@ -169,13 +80,6 @@ move_down_until_collision(TargetBox, Collidables, BarrierBelow):-
 	maplist(box_top(), Collisions, [Top|TopList]),
 	box_bottom(TargetBox, Frontier),
 	foldl(minimum_absolute_delta(Frontier), TopList, Top, BarrierBelow).
-
-sprite_box(Tick, Mob, box(XPosition, BoxY, Width, Height)):-
-	sprite(Mob, Tick, Sprite),
-	Mob = mob(TypeId, XPosition, YPosition, _XSpeed, _YSpeed, _Facing),
-	sheet_geometry(TypeId, Sprite, Width, Height, _Sheet, _SheetX, _SheetY, _SheetWidth, _SheetHeight),
-	% YPosition is bottom left, box position is top left.
-	BoxY #= YPosition - Height.
 
 mob_move_x_toward_facing(Mob, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, right),
@@ -265,17 +169,22 @@ gravity([H | L], [H1 | L1]):-
 	H1 = mob(TypeId, XPosition, YPosition, XSpeed, NewSpeed, Facing),
 	gravity(L, L1).
 
-after_physics(OldState, Tick, NewState):-
-	gravity(OldState, Accellerated),
+after_physics(Mobs, Tick, [Moved|Others]):-
+	gravity(Mobs, Accellerated),
 	partition(mob_type(hero), Accellerated, [Mover], Others),
 	maplist(sprite_box(Tick), Others, Collidables),
-	mob_move(Mover, Tick, Collidables, Moved),
-	NewState = [Moved|Others].
+	mob_move(Mover, Tick, Collidables, Moved).
+
+after_agents(Mobs, Tick, NewMobs):-
+	control_hero(
+		box(360, 2000, 32, 32), % Target
+		Mobs, Tick,
+		NewMobs).
 
 is_endgame([], _Tick, _Bounds).
 
-is_endgame(State, Tick, level_dimensions(LevelWidth, LevelHeight)):-
-	include(mob_type(hero), State, [Hero]),
+is_endgame(Mobs, Tick, level_dimensions(LevelWidth, LevelHeight)):-
+	include(mob_type(hero), Mobs, [Hero]),
 	sprite_box(Tick, Hero, box(Left, Top, Width, Height)),
 	( Left + Width #< 0;  Left #> LevelWidth; Top + Height #< 0; Top #> LevelHeight ).
 
@@ -298,11 +207,11 @@ viewport_follows_hero(Mobs, level_dimensions(LevelWidth, LevelHeight), viewport(
 		(CenteredTop + VHeight #> LevelHeight, VTop = LevelHeight - VHeight);
 		VTop = CenteredTop
 	).
-			
+
+
 writable_mob(Tick, Viewport, Mob, Write):-
-	% TODO: this should be a read of sprite_box
-	Mob = mob(TypeId, XPosition, BottomYPosition, _XSpeed, _YSpeed, _Facing),
-	sprite(Mob, Tick, Sprite),
+	Mob = mob(TypeId, XPosition, BottomYPosition, XSpeed, YSpeed, Facing),
+	sprite_sheet(TypeId, XSpeed, YSpeed, Facing, Tick, Sprite),
 	sheet_geometry(TypeId, Sprite, LevelWidth, LevelHeight, SheetName, SheetX, SheetY, SheetWidth, SheetHeight),
 	% game geometry positions things at their bottom left corners, but
 	% the renderer needs top left corners
@@ -346,7 +255,8 @@ game(OldState, Tick, LevelDimensions, ViewportDimensions):-
 	is_endgame(OldState, Tick, LevelDimensions);
 	Tick > 1000;
 	!,
-	after_physics(OldState, Tick, NewState),
+	after_physics(OldState, Tick, MovedState),
+	after_agents(MovedState, Tick, NewState),
 	ViewportDimensions = viewport_dimensions(VWidth, VHeight),
 	Viewport = viewport(_VLeft, _VTop, VWidth, VHeight),
 	viewport_follows_hero(OldState, LevelDimensions, Viewport),
@@ -362,10 +272,20 @@ test_game():-
 	% Need a better way to describe the initial state of a level
 	game(
 		[
-			mob(hero, 0, 100, 4, 0, right),
+			mob(hero, 0, 100, 0, 0, right),
+
 			mob(brick, 96, 344, none, none, neutral),
 			mob(brick, 128, 344, none, none, neutral),
 			mob(brick, 160, 344, none, none, neutral),
+			mob(brick, 192, 344, none, none, neutral),
+			mob(brick, 224, 344, none, none, neutral),
+			mob(brick, 256, 344, none, none, neutral),
+			mob(brick, 288, 344, none, none, neutral),
+			mob(brick, 320, 344, none, none, neutral),
+			mob(brick, 352, 344, none, none, neutral),
+			mob(brick, 384, 344, none, none, neutral),
+			mob(brick, 416, 344, none, none, neutral),
+
 			mob(brick, 192, 444, none, none, neutral),
 			mob(brick, 224, 444, none, none, neutral),
 			mob(brick, 256, 444, none, none, neutral),
