@@ -99,11 +99,11 @@ sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft2):-
 	anim_frame(Tick, 2),
 	XSpeed #\= 0.
 
-sprite_sheet(hero, XSpeed, 0, left, Tick, runleft3):-
+sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft3):-
 	anim_frame(Tick, 3),
 	XSpeed #\= 0.
 
-sprite_sheet(hero, XSpeed, 0, left, Tick, runleft4):-
+sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft4):-
 	anim_frame(Tick, 4),
 	XSpeed #\= 0.
 

@@ -49,18 +49,10 @@ viewport_follows_hero(Mobs, level_dimensions(LevelWidth, LevelHeight), viewport(
 	include(mob_type(hero), Mobs, [mob(hero, HeroLeft, HeroBottom, _XSpeed, _YSpeed, _Facing)]),
 	HalfVWidth #= div(VWidth, 2),
 	HalfVHeight #= div(VHeight, 2),
-	CenteredLeft #= HeroLeft - HalfVWidth,
-	CenteredTop #= HeroBottom - HalfVHeight,
-	(
-		(CenteredLeft #< 0, VLeft = 0);
-		(CenteredLeft + VWidth #> LevelWidth, VLeft = LevelWidth - VWidth);
-		VLeft = CenteredLeft
-	),
-	(
-		(CenteredTop #< 0, VTop = 0);
-		(CenteredTop + VHeight #> LevelHeight, VTop = LevelHeight - VHeight);
-		VTop = CenteredTop
-	).
+	CenteredLeft #= max(HeroLeft - HalfVWidth, 0),
+	CenteredTop #= max(HeroBottom - HalfVHeight, 0),
+	VLeft #= min(CenteredLeft, LevelWidth - VWidth),
+	VTop #= min(CenteredTop, LevelHeight - VHeight).
 
 
 writable_mob(Tick, Viewport, Mob, Write):-
@@ -105,22 +97,22 @@ write_state(Tick, Viewport, State):-
 
 % A game produces "done" after writing a list of frames
 
-game(OldState, Tick, LevelDimensions, ViewportDimensions):-
-	is_endgame(OldState, Tick, LevelDimensions);
+game(StartState, Tick, LevelDimensions, ViewportDimensions):-
+	is_endgame(StartState, Tick, LevelDimensions);
 	Tick > 1000;
 	!,
-	after_physics(OldState, Tick, MovedState),
-	after_agents(MovedState, Tick, NewState),
+	after_physics(StartState, Tick, PostPhysicsState),
+	after_agents(PostPhysicsState, Tick, NewState),
 	ViewportDimensions = viewport_dimensions(VWidth, VHeight),
 	Viewport = viewport(_VLeft, _VTop, VWidth, VHeight),
-	viewport_follows_hero(OldState, LevelDimensions, Viewport),
+	viewport_follows_hero(NewState, LevelDimensions, Viewport),
 	write(current_output, "## VIEWPORT: "), write(current_output, Viewport), nl,
 
 	NextTick #= Tick + 1,
 	write(current_output, "# "), write(current_output, next_state(NewState, NextTick)), nl,
 	write_state(Tick, Viewport, NewState),
 
-	( OldState = NewState; game(NewState, NextTick, LevelDimensions, ViewportDimensions)).
+	( StartState = NewState; game(NewState, NextTick, LevelDimensions, ViewportDimensions)).
 
 test_game():-
 	% Need a better way to describe the initial state of a level
@@ -135,15 +127,10 @@ test_game():-
 			mob(brick, 224, 344, none, none, neutral),
 			mob(brick, 256, 344, none, none, neutral),
 			mob(brick, 288, 344, none, none, neutral),
-			mob(brick, 320, 344, none, none, neutral),
-			mob(brick, 352, 344, none, none, neutral),
-			mob(brick, 384, 344, none, none, neutral),
-			mob(brick, 416, 344, none, none, neutral),
-
-			mob(brick, 192, 444, none, none, neutral),
-			mob(brick, 224, 444, none, none, neutral),
-			mob(brick, 256, 444, none, none, neutral),
-			mob(brick, 288, 444, none, none, neutral)
+			mob(brick, 320, 344, none, none, neutral)
+		%	mob(brick, 352, 344, none, none, neutral),
+		%	mob(brick, 384, 344, none, none, neutral),
+		%	mob(brick, 416, 344, none, none, neutral)
 		],
 		0,
 		level_dimensions(1280, 1280),
