@@ -26,11 +26,7 @@ standing(Tick, Mob, OtherBoxen):-
 control_hero(TargetBox, Mobs, Tick, [NewHero | Remainder]):-
     partition(mob_type(hero), Mobs, [Hero], Remainder),
     include(mob_speed(speed(none, none, _Facing)), Remainder, Platforms),
-    empty_heap(Fringe), 
-    rb_empty(Marks),
-    
-    % This didn't exactly *fail*, but it did something spooky...
-    moves_to_target(TargetBox, [Hero | Platforms], Tick, Marks, Fringe, [NextMove| _Path]),
+    moves_to_target(TargetBox, [Hero | Platforms], Tick, [NextMove| _Path]),
     mob_with_speed(NextMove, Hero, NewHero).
 
 
@@ -64,6 +60,10 @@ moves_from_here(TargetBox, Tick, Hero, Platforms, Results):-
     maplist(strategy_parts(), Moves, MovedHeroes, Strategies),
     pairs_keys_values(Results, Qualities, Strategies).
     
+moves_to_target(TargetBox, Mobs, Tick, Moves):-
+    empty_heap(Fringe), 
+    rb_empty(Marks),
+    moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, Moves).
 
 % Prevent cycles by comitting to a single direction at any standing level.
 moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, [NextMove| Rest]):-
@@ -97,9 +97,7 @@ test(standing_up) :-
         mob(hero, 315, 311, 5, 0, left), 
         [box(224, 312, 32, 32), box(320, 312, 32, 32)]).
 
-test(moves) :- 
-    empty_heap(Fringe), 
-    rb_empty(Marks), 
+test(move_around) :- 
     moves_to_target(
         box(360, 2000, 32, 32),
         [
@@ -112,8 +110,6 @@ test(moves) :-
             mob(brick, 320, 344, none, none, neutral)
         ],
         71,
-        Marks,
-        Fringe,
         failThisTest).
 
 test(walk_around) :-

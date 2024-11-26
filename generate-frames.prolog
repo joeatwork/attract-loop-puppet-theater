@@ -118,19 +118,10 @@ test_game():-
 	% Need a better way to describe the initial state of a level
 	game(
 		[
-			mob(hero, 0, 100, 0, 0, right),
+			mob(hero, 320, 311, 0, 0, right),
 
-			mob(brick, 96, 344, none, none, neutral),
-			mob(brick, 128, 344, none, none, neutral),
-			mob(brick, 160, 344, none, none, neutral),
-			mob(brick, 192, 344, none, none, neutral),
-			mob(brick, 224, 344, none, none, neutral),
-			mob(brick, 256, 344, none, none, neutral),
 			mob(brick, 288, 344, none, none, neutral),
 			mob(brick, 320, 344, none, none, neutral)
-		%	mob(brick, 352, 344, none, none, neutral),
-		%	mob(brick, 384, 344, none, none, neutral),
-		%	mob(brick, 416, 344, none, none, neutral)
 		],
 		0,
 		level_dimensions(1280, 1280),
