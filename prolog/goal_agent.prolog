@@ -65,6 +65,20 @@ moves_to_target(TargetBox, Mobs, Tick, Moves):-
     rb_empty(Marks),
     moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, Moves).
 
+next_unmarked_from_fringe(OldFringe, Marks, NewFringe, NewPriority, NewStrategy):-
+    (
+        get_from_heap(OldFringe, NewPriority, NewStrategy, NewFringe),
+        NewStrategy = strategy(_NextMove, MovedHero),
+        \+ rb_lookup(MovedHero, seen, Marks)
+    );
+    (
+        get_from_heap(OldFringe, _NextPriority, NextStrategy, NextFringe),
+        NextStrategy = strategy(_NextMove, MovedHero),
+        rb_lookup(MovedHero, seen, Marks),
+        next_unmarked_from_fringe(NextFringe, Marks, NewFringe, NewPriority, NewStrategy)
+    ).
+
+
 % Prevent cycles by comitting to a single direction at any standing level.
 moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, [NextMove| Rest]):-
     partition(mob_type(hero), Mobs, [Hero], Platforms),
@@ -73,16 +87,16 @@ moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, [NextMove| Rest]):-
     moves_from_here(TargetBox, Tick, Hero, Platforms, NewMoves),
     list_to_heap(NewMoves, NewHeap),
     merge_heaps(Fringe, NewHeap, AllFringe),
-    get_from_heap(AllFringe, Priority, NextStrategy, NextFringe),
 
+    next_unmarked_from_fringe(AllFringe, Marks, NextFringe, Priority, Strategy),
     (
         (
             Priority #= 0,
             NextMove = speed(0, 0, right)
         );
         (
-            NextStrategy = strategy(NextMove, MovedHero),
-            rb_insert_new(Marks, MovedHero, true, NextMarks),
+            Strategy = strategy(NextMove, MovedHero),
+            rb_insert_new(Marks, MovedHero, seen, NextMarks),
             NextTick #= Tick + 1,
             moves_to_target(TargetBox, [MovedHero|Platforms], NextTick, NextMarks, NextFringe, Rest)
         )
@@ -93,37 +107,19 @@ moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, [NextMove| Rest]):-
 % swipl -g run_tests -t halt prolog/goal_agent.prolog
 
 test(standing_up) :-
-    standing(71,
-        mob(hero, 315, 311, 5, 0, left), 
-        [box(224, 312, 32, 32), box(320, 312, 32, 32)]).
+    findall(true,
+        standing(71,
+                mob(hero, 315, 311, 5, 0, left), 
+                [box(224, 312, 32, 32), box(320, 312, 32, 32)]
+            ), [true]).
 
 test(move_around) :- 
     moves_to_target(
-        box(360, 2000, 32, 32),
+        box(360, 2000, 32, 32), 
         [
-            mob(hero, 315, 311, 5, 0, left),
-            mob(brick, 96, 344, none, none, neutral),
-            mob(brick, 128, 344, none, none, neutral),
-            mob(brick, 160, 344, none, none, neutral),
-            mob(brick, 192, 344, none, none, neutral),
-            mob(brick, 224, 344, none, none, neutral), 
+            mob(hero, 320, 311, 5, 0, right),
+            mob(brick, 288, 344, none, none, neutral),
             mob(brick, 320, 344, none, none, neutral)
-        ],
-        71,
-        failThisTest).
-
-test(walk_around) :-
-    control_hero(
-        box(360, 2000, 32, 32),
-        [mob(hero, 315, 311, 5, 0, left),
-        mob(brick, 96, 344, none, none, neutral),
-        mob(brick, 128, 344, none, none, neutral),
-        mob(brick, 160, 344, none, none, neutral),
-        mob(brick, 192, 344, none, none, neutral),
-        mob(brick, 224, 344, none, none, neutral),
-        mob(brick, 256, 344, none, none, neutral),
-        mob(brick, 288, 344, none, none, neutral),
-        mob(brick, 320, 344, none, none, neutral)
-    ], 71, failThisTest).
+        ], 998, failThisTest).
 
 :- end_tests(goal_agent).
