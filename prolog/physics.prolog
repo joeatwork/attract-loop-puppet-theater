@@ -13,6 +13,8 @@
     ]).
 
 :- use_module(library(clpfd)).
+
+:- use_module(assets).
 :- use_module(mobs).
 
 box_top(Top, box(_Left, Top, _Width, _Height)).
@@ -126,23 +128,18 @@ mob_move_y(Mob, _Tick, _Collidables, Mob):-
 mob_move_y(Mob, Tick, Collidables, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
 	TargetY #= YPosition + YSpeed,
-	integer(YSpeed),
-
-	% Glitch Here! We calculate collisions with the destination bounding box,
-	% But if a collision happens, we may render a different sprite!
 	TargetMove = mob(TypeId, XPosition, TargetY, XSpeed, YSpeed, Facing),
 	sprite_box(Tick, TargetMove, TargetBox),
-
 	(
 		(
-			move_down_until_collision(TargetBox, Collidables, BarrierBelow),
 			YSpeed #> 0,
+			move_down_until_collision(TargetBox, Collidables, BarrierBelow),
 			FinalY #= BarrierBelow - 1,
 			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
 		);
 		(
-			move_up_until_collision(TargetBox, Collidables, BarrierAbove),
 			YSpeed #< 0,
+			move_up_until_collision(TargetBox, Collidables, BarrierAbove),
 			sprite_sheet(TypeId, XSpeed, 0, Tick, Facing, Sprite),
 			sprite_height(TypeId, Sprite, Height),
 			FinalY #= BarrierAbove + Height + 1,
@@ -155,21 +152,40 @@ mob_move(Mob, Tick, Collidables, Moved):-
 	mob_move_x(Mob, Tick, Collidables, XMoved),
 	mob_move_y(XMoved, Tick, Collidables, Moved).
 
-% Refactor now that you know how to spell maplist
-gravity([], []).
-gravity([H | L], [H | L1]):-
-	H = mob(_TypeId, _XPosition, _YPosition, _XSpeed, none, _Facing),
-	gravity(L, L1).
-gravity([H | L], [H1 | L1]):-
-	H = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
-	integer(YSpeed),
-	NewSpeed #= YSpeed + 1,
-	H1 = mob(TypeId, XPosition, YPosition, XSpeed, NewSpeed, Facing),
-	gravity(L, L1).
+gravity(Mob, Moved):-
+	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
+	(
+		YSpeed = none
+		-> Moved = Mob
+		;
+		NewSpeed #= YSpeed + 1,
+		Moved = mob(TypeId, XPosition, YPosition, XSpeed, NewSpeed, Facing)
+	).
 
 after_physics(Mobs, Tick, [Moved|Others]):-
-	gravity(Mobs, Accellerated),
+	maplist(gravity(), Mobs, Accellerated),
 	partition(mob_type(hero), Accellerated, [Mover], Others),
     % TODO: Support multiple movers in here!
 	maplist(sprite_box(Tick), Others, Collidables),
+
+	% WHY DOES THIS ALLOW FOR MULTIPLE SOLUTIONS?
 	mob_move(Mover, Tick, Collidables, Moved).
+
+:- begin_tests(physics).
+
+test(after_physics):-
+	findall(MovedHero,
+	after_physics(
+		[
+			mob(hero, 315, 311, 5, 0, left),
+			mob(brick, 288, 344, none, none, neutral),
+			mob(brick, 320, 344, none, none, neutral)
+		], 999,
+		[
+			MovedHero,
+			mob(brick, 288, 344, none, none, neutral),
+			mob(brick, 320, 344, none, none, neutral)
+		]
+	), [mob(hero, 310, 311, 5, 0, left)]).
+
+:- end_tests(physics).

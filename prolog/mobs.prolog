@@ -1,4 +1,4 @@
-:- module(mobs, [mob_type/2, mob_bottom/2, mob_speed/2, mob_with_speed/3, sprite_box/3]).
+:- module(mobs, [mob_type/2, mob_bottom/2, mob_left/2, mob_speed/2, mob_with_speed/3, sprite_box/3]).
 
 :- use_module(library(clpfd)).
 
@@ -7,6 +7,8 @@
 mob_type(TypeId, mob(TypeId, _Left, _Bottom, _XSpeed, _YSpeed, _Facing)).
 
 mob_speed(speed(XSpeed, YSpeed, Facing), mob(_TypeId, _Left, _Bottom, XSpeed, YSpeed, Facing)).
+
+mob_left(Left, mob(_TypeId, Left, _Bottom, _XSpeed, _YSpeed, _Facing)).
 
 mob_bottom(Bottom, mob(_TypeId, _Left, Bottom, _XSpeed, _YSpeed, _Facing)).
 

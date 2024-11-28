@@ -23,6 +23,7 @@ standing(Tick, Mob, OtherBoxen):-
     move_box(0, 1, Bounds, Sink),
     collisions(Sink, OtherBoxen, [_Footing|_Rest]).
 
+
 control_hero(TargetBox, Mobs, Tick, [NewHero | Remainder]):-
     partition(mob_type(hero), Mobs, [Hero], Remainder),
     include(mob_speed(speed(none, none, _Facing)), Remainder, Platforms),
@@ -35,11 +36,12 @@ evaluate_move(TargetBox, Tick, Hero, Platforms, Move, MovedHero, Quality):-
     mob_with_speed(Move, Hero, NextHero),
     after_physics([NextHero|Platforms], Tick, Moved),
     include(mob_type(hero), Moved, [MovedHero]),
+
     /*
     We always calculate the heuristic using the same
     tick / sprite so we're measuring apples to apples
     */
-    sprite_box(1, MovedHero, DestBox),
+    sprite_box(1, MovedHero, DestBox), % BUG?
     box_distance_squared(TargetBox, DestBox, Quality).
 
 
@@ -48,40 +50,49 @@ moves_from_here(TargetBox, Tick, Hero, Platforms, Results):-
     mob_speed(speed(_XSpeed, YSpeed, _Facing), Hero),
     maplist(sprite_box(Tick), Platforms, PlatformBoxen),
     ( 
-      (
-            % When standing, you can run or leap
-            standing(Tick, Hero, PlatformBoxen),
-            Moves = [ speed(5, 0, right), speed(5, 0, left), speed(5, -18, right), speed(5, -18, left)]
-        );
+        % When standing, you can run or leap
+        standing(Tick, Hero, PlatformBoxen)
+        ->  Moves = [ speed(5, 0, right), speed(5, 0, left), speed(5, -18, right), speed(5, -18, left)]
+        ;
         % When leaping / falling you can steer X but not Y
         Moves = [ speed(5, YSpeed, right), speed(5, YSpeed, left) ] 
     ),
     maplist(evaluate_move(TargetBox, Tick, Hero, Platforms), Moves, MovedHeroes, Qualities),
     maplist(strategy_parts(), Moves, MovedHeroes, Strategies),
     pairs_keys_values(Results, Qualities, Strategies).
-    
+
+
 moves_to_target(TargetBox, Mobs, Tick, Moves):-
     empty_heap(Fringe), 
     rb_empty(Marks),
     moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, Moves).
 
+
+mark_key(Mob, Key):-
+    mob_left(Left, Mob),
+    mob_bottom(Bottom, Mob),
+    mob_speed(speed(_XSpeed, YSpeed, _Facing), Mob),
+    Key = seen(Left, Bottom, YSpeed).
+
+
 next_unmarked_from_fringe(OldFringe, Marks, NewFringe, NewPriority, NewStrategy):-
+    get_from_heap(OldFringe, NextPriority, NextStrategy, NextFringe),
+    NextStrategy = strategy(_NextMove, MovedHero),
+    mark_key(MovedHero, Mark),
     (
-        get_from_heap(OldFringe, NewPriority, NewStrategy, NewFringe),
-        NewStrategy = strategy(_NextMove, MovedHero),
-        \+ rb_lookup(MovedHero, seen, Marks)
-    );
-    (
-        get_from_heap(OldFringe, _NextPriority, NextStrategy, NextFringe),
-        NextStrategy = strategy(_NextMove, MovedHero),
-        rb_lookup(MovedHero, seen, Marks),
-        next_unmarked_from_fringe(NextFringe, Marks, NewFringe, NewPriority, NewStrategy)
+        rb_lookup(Mark, seen, Marks)
+        -> next_unmarked_from_fringe(NextFringe, Marks, NewFringe, NewPriority, NewStrategy) 
+        ;
+        NewStrategy = NextStrategy,
+        NewPriority = NextPriority,
+        NewFringe = NextFringe
     ).
 
 
 % Prevent cycles by comitting to a single direction at any standing level.
 moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, [NextMove| Rest]):-
     partition(mob_type(hero), Mobs, [Hero], Platforms),
+    rb_insert_new(Marks, Hero, seen, NextMarks),
 
     % TODO: Fring grows without bound. So BOUND it, by moving target into some close proximity
     moves_from_here(TargetBox, Tick, Hero, Platforms, NewMoves),
@@ -90,16 +101,12 @@ moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, [NextMove| Rest]):-
 
     next_unmarked_from_fringe(AllFringe, Marks, NextFringe, Priority, Strategy),
     (
-        (
-            Priority #= 0,
-            NextMove = speed(0, 0, right)
-        );
-        (
-            Strategy = strategy(NextMove, MovedHero),
-            rb_insert_new(Marks, MovedHero, seen, NextMarks),
-            NextTick #= Tick + 1,
-            moves_to_target(TargetBox, [MovedHero|Platforms], NextTick, NextMarks, NextFringe, Rest)
-        )
+        Priority #= 0
+        ->  NextMove = speed(0, 0, right)
+        ;
+        Strategy = strategy(NextMove, MovedHero),
+        NextTick #= Tick + 1,
+        moves_to_target(TargetBox, [MovedHero|Platforms], NextTick, NextMarks, NextFringe, Rest)
     ).
 
 
@@ -112,6 +119,15 @@ test(standing_up) :-
                 mob(hero, 315, 311, 5, 0, left), 
                 [box(224, 312, 32, 32), box(320, 312, 32, 32)]
             ), [true]).
+
+test(evaluate_move) :-
+            evaluate_move(
+                box(360,2000,32,32),999,
+                mob(hero,315,311,5,0,left),
+                [mob(brick,288,344,none,none,neutral),mob(brick,320,344,none,none,neutral)],
+                speed(5,0,left),
+                mob(hero,310,311,5,0,left),
+                2852725).
 
 test(move_around) :- 
     moves_to_target(
