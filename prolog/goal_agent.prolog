@@ -115,13 +115,13 @@ moves_to_target(TargetBox, Mobs, Tick, Marks, Fringe, [NextMove| Rest]):-
 
 test(standing_up) :-
     findall(true,
-        standing(71,
+        goal_agent:standing(71,
                 mob(hero, 315, 311, 5, 0, left), 
                 [box(224, 312, 32, 32), box(320, 312, 32, 32)]
             ), [true]).
 
 test(evaluate_move) :-
-            evaluate_move(
+            goal_agent:evaluate_move(
                 box(360,2000,32,32),999,
                 mob(hero,315,311,5,0,left),
                 [mob(brick,288,344,none,none,neutral),mob(brick,320,344,none,none,neutral)],
@@ -130,7 +130,7 @@ test(evaluate_move) :-
                 2852725).
 
 test(move_around) :- 
-    moves_to_target(
+    goal_agent:moves_to_target(
         box(360, 2000, 32, 32), 
         [
             mob(hero, 320, 311, 5, 0, right),

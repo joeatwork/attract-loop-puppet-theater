@@ -63,27 +63,47 @@ minimum_absolute_delta(Target, Other1, Other2, Min):-
 
 move_right_until_collision(TargetBox, Collidables, LeftBarrier):-
 	collisions(TargetBox, Collidables, Collisions),
-	maplist(box_left(), [Lft | LftList], Collisions),
+	maplist(box_left(), CollisionLefts, Collisions),
 	box_right(Frontier, TargetBox),
-	foldl(minimum_absolute_delta(Frontier), LftList, Lft, LeftBarrier).
+	(
+		[Lft|LftList] = CollisionLefts ->
+			foldl(minimum_absolute_delta(Frontier), LftList, Lft, LeftBarrier)
+		;
+		LeftBarrier #= Frontier + 1
+	).
 
 move_left_until_collision(TargetBox, Collidables, RightBarrier):-
 	collisions(TargetBox, Collidables, Collisions),
-	maplist(box_right(), [Rt | RtList ], Collisions),
+	maplist(box_right(), CollisionRights, Collisions),
 	box_left(Frontier, TargetBox),
-	foldl(minimum_absolute_delta(Frontier), RtList, Rt, RightBarrier).
+	(
+		[Rt | RtList] = CollisionRights ->
+		foldl(minimum_absolute_delta(Frontier), RtList, Rt, RightBarrier)
+		;
+		RightBarrier #= Frontier + 1
+	).
 
 move_up_until_collision(TargetBox, Collidables, BarrierAbove):-
 	collisions(TargetBox, Collidables, Collisions),
-	maplist(box_bottom(), [Btm|BtmList], Collisions),
+	maplist(box_bottom(), CollisionBottoms, Collisions),
 	box_top(Frontier, TargetBox),
-	foldl(minimum_absolute_delta(Frontier), BtmList, Btm, BarrierAbove).
+	(
+		[Btm| BtmList] = CollisionBottoms -> 
+			foldl(minimum_absolute_delta(Frontier), BtmList, Btm, BarrierAbove)
+		;
+		BarrierAbove #= Frontier - 1
+	).
 
 move_down_until_collision(TargetBox, Collidables, BarrierBelow):-
 	collisions(TargetBox, Collidables, Collisions),
-	maplist(box_top(), [Top|TopList], Collisions),
+	maplist(box_top(), CollisionTops, Collisions),
 	box_bottom(Frontier, TargetBox),
-	foldl(minimum_absolute_delta(Frontier), TopList, Top, BarrierBelow).
+	( 
+		[Top|TopList] = CollisionTops -> 
+			foldl(minimum_absolute_delta(Frontier), TopList, Top, BarrierBelow)
+		;
+		BarrierBelow #= Frontier + 1
+	).
 
 mob_move_x_toward_facing(Mob, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, right),
@@ -106,20 +126,17 @@ mob_move_x(Mob, Tick, Collidables, Moved):-
 	sprite_box(Tick, MoveTarget, TargetBox),
 	MoveTarget = mob(TypeId, _TargetX, YPosition, _XSpeed, YSpeed, Facing),
 	(
-		(
-			Facing = right,
+		
+		Facing = right ->
 			move_right_until_collision(TargetBox, Collidables, LeftBarrier),
 			sprite_sheet(TypeId, 0, YSpeed, Facing, Tick, Sprite),
 			sprite_width(TypeId, Sprite, Width),
 			FinalX #= LeftBarrier - Width,
 			Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing)
-		);
-		(
-			Facing = left, 
+		;
+		Facing = left ->
 			move_left_until_collision(TargetBox, Collidables, RightBarrier),
 			Moved = mob(TypeId, RightBarrier, YPosition, 0, YSpeed, Facing)
-		);
-		(Moved = MoveTarget)
 	).
 
 mob_move_y(Mob, _Tick, _Collidables, Mob):-
@@ -131,21 +148,20 @@ mob_move_y(Mob, Tick, Collidables, Moved):-
 	TargetMove = mob(TypeId, XPosition, TargetY, XSpeed, YSpeed, Facing),
 	sprite_box(Tick, TargetMove, TargetBox),
 	(
-		(
-			YSpeed #> 0,
+		YSpeed #> 0 ->
 			move_down_until_collision(TargetBox, Collidables, BarrierBelow),
 			FinalY #= BarrierBelow - 1,
 			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
-		);
-		(
-			YSpeed #< 0,
+		;
+		YSpeed #< 0 ->
 			move_up_until_collision(TargetBox, Collidables, BarrierAbove),
 			sprite_sheet(TypeId, XSpeed, 0, Tick, Facing, Sprite),
 			sprite_height(TypeId, Sprite, Height),
 			FinalY #= BarrierAbove + Height + 1,
 			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
-		);
-		(Moved = TargetMove)
+		;
+		YSpeed #= 0 ->
+			Moved = TargetMove
 	).
 
 mob_move(Mob, Tick, Collidables, Moved):-
@@ -172,6 +188,12 @@ after_physics(Mobs, Tick, [Moved|Others]):-
 	mob_move(Mover, Tick, Collidables, Moved).
 
 :- begin_tests(physics).
+
+test(clear_left_path):-
+	findall(Moved, 
+		physics:mob_move_x(
+			mob(hero, 315, 311, 5, 1, left), 999, 
+			[box(288, 312, 32, 32), box(320, 312, 32, 32)], Moved),[mob(hero, 310, 311, 5, 1, left)]).
 
 test(after_physics):-
 	findall(MovedHero,
