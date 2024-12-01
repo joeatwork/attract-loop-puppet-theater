@@ -27,7 +27,9 @@ standing(Mob, OtherBoxen):-
 control_hero(TargetBox, Mobs, [NewHero | Remainder]):-
     partition(mob_type(hero), Mobs, [Hero], Remainder),
     include(mob_speed(speed(none, none, _Facing)), Remainder, Platforms),
-    moves_to_target(TargetBox, [Hero | Platforms], [NextMove| _Path]),
+
+    % TODO: Hero should STAND when arriving at the goal.
+    moves_to_target(TargetBox, [Hero | Platforms], [strategy(NextMove, _Moved)| _Path]),
     mob_with_speed(NextMove, Hero, NewHero).
 
 
@@ -94,12 +96,12 @@ moves_to_target(TargetBox, Mobs, Marks, Fringe, [NextMove| Rest]):-
     list_to_heap(NewMoves, NewHeap),
     merge_heaps(Fringe, NewHeap, AllFringe),
 
-    next_unmarked_from_fringe(AllFringe, Marks, NextFringe, NextMarks, Priority, Strategy),
+    next_unmarked_from_fringe(AllFringe, Marks, NextFringe, NextMarks, Priority, NextMove),
     (
         Priority #= 0
-        ->  NextMove = speed(0, 0, right)
+        ->  Rest = []
         ;
-        Strategy = strategy(NextMove, MovedHero),
+        NextMove = strategy(_M, MovedHero),
         moves_to_target(TargetBox, [MovedHero|Platforms], NextMarks, NextFringe, Rest)
     ).
 
