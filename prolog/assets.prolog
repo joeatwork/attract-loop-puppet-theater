@@ -21,33 +21,33 @@
 :- discontiguous(hitbox_dimensions/3).
 :- discontiguous(sheet_geometry/11).
 
-hitbox_dimensions(hero, 32, 44).
+hitbox_dimensions(hero, 48, 66).
 
-sheet_geometry(hero, standLeft, -2, -2, 60, 72,  "megaman/stand-left.png", 0, 0, 21, 24).
+sheet_geometry(hero, standLeft, -6, -6, 60, 72,  "megaman/stand-left.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, standRight, -3, -2, 60, 72,  "megaman/stand-right.png", 0, 0, 21, 24).
+sheet_geometry(hero, standRight, -9, -6, 60, 72,  "megaman/stand-right.png", 0, 0, 21, 24).
 
 % TODO: run cycle filenames are out of order and confusing.
 
-sheet_geometry(hero, runLeft1, 0, -2, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
+sheet_geometry(hero, runLeft1, 0, -6, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runLeft2, -4, 0, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
+sheet_geometry(hero, runLeft2, -12, 0, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runLeft3, 0, -2, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
+sheet_geometry(hero, runLeft3, 0, -6, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runLeft4, -2, 0, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 24).
+sheet_geometry(hero, runLeft4, -6, 0, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 22).
 
-sheet_geometry(hero, runRight1, 0, -2, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+sheet_geometry(hero, runRight1, 0, -6, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
 
-sheet_geometry(hero, runRight2, -4, 0, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
+sheet_geometry(hero, runRight2, -12, 0, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runRight3, 0, -2, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+sheet_geometry(hero, runRight3, 0, -6, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
 
-sheet_geometry(hero, runRight4, -3, 0, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 24).
+sheet_geometry(hero, runRight4, -9, 0, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 22).
 
-sheet_geometry(hero, jumpLeft, -4, -2, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
+sheet_geometry(hero, jumpLeft, -12, -6, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
 
-sheet_geometry(hero, jumpRight, -6, -2, 72, 90, "megaman/jump-right.png", 0, 0, 26, 30).
+sheet_geometry(hero, jumpRight, -18, -6, 72, 90, "megaman/jump-right.png", 0, 0, 26, 30).
 
 %%%%%%%%%%%
 
