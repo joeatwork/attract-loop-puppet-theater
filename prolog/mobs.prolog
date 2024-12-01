@@ -1,4 +1,4 @@
-:- module(mobs, [mob_type/2, mob_bottom/2, mob_left/2, mob_speed/2, mob_with_speed/3, sprite_box/3]).
+:- module(mobs, [mob_type/2, mob_bottom/2, mob_left/2, mob_speed/2, mob_with_speed/3, mob_box/2]).
 
 :- use_module(library(clpfd)).
 
@@ -18,9 +18,10 @@ mob_with_speed(
 	mob(TypeId, Left, Bottom, NewXSpeed, NewYSpeed, NewFacing)
 	).
 
-sprite_box(Tick, Mob, box(XPosition, BoxY, Width, Height)):-
-	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
-	sprite_sheet(TypeId, XSpeed, YSpeed, Facing, Tick, Sprite),
-	sheet_geometry(TypeId, Sprite, Width, Height, _Sheet, _SheetX, _SheetY, _SheetWidth, _SheetHeight),
-	% YPosition is bottom left, box position is top left.
-	BoxY #= YPosition - Height.
+
+mob_box(Mob, box(Left, Top, Width, Height)):-
+	mob_type(TypeId, Mob),
+	mob_left(Left, Mob),
+	mob_bottom(Bottom, Mob),
+	hitbox_dimensions(TypeId, Width, Height),
+	Top #= Bottom - Height.

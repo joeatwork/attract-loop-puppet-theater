@@ -1,49 +1,61 @@
-:- module(assets, [sheet_geometry/9, sprite_height/3, sprite_width/3, sprite_sheet/6]).
+:- module(assets, [sheet_geometry/11, hitbox_dimensions/3, sprite_sheet/6]).
 
 :- use_module(library(clpfd)).
 
+% Maps and metadata for images (and maybe sounds or whatever if we have them.)
 
-% Maps and metadata for images (and maybe sounds or whatver if we have them.)
+% The hero is a 32x44 box that doesn't change shape. We associate
+% rendering offsets with the current sprite.
 
-sheet_geometry(hero, standLeft, 60, 72, "megaman/stand-left.png", 0, 0, 21, 24).
+% Offsets are relative to the TOP LEFT of the hitbox (unlike in physics where everything is bottom left)
 
-sheet_geometry(hero, standRight, 60, 72, "megaman/stand-right.png", 0, 0, 21, 24).
+% sheet_geometry(
+%          MobType,
+%          SheetIdentifier, 
+%		   RenderOffsetX, RenderOffsetY, % offset of image from hitbox, in game coordinates 
+%          LevelWidth, LevelHeight, % width and height in game coordinates
+%          ImageFileName,
+%          ImageOffsetX, ImageOffsetY, ImageWidth, ImageHeight % cropping for compositor, image coords
+%         )
+
+:- discontiguous(hitbox_dimensions/3).
+:- discontiguous(sheet_geometry/11).
+
+hitbox_dimensions(hero, 32, 44).
+
+sheet_geometry(hero, standLeft, -2, -2, 60, 72,  "megaman/stand-left.png", 0, 0, 21, 24).
+
+sheet_geometry(hero, standRight, -3, -2, 60, 72,  "megaman/stand-right.png", 0, 0, 21, 24).
 
 % TODO: run cycle filenames are out of order and confusing.
 
-sheet_geometry(hero, runLeft1, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
+sheet_geometry(hero, runLeft1, 0, -2, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runLeft2, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
+sheet_geometry(hero, runLeft2, -4, 0, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runLeft3, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
+sheet_geometry(hero, runLeft3, 0, -2, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runLeft4, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 24).
+sheet_geometry(hero, runLeft4, -2, 0, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, runRight1, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+sheet_geometry(hero, runRight1, 0, -2, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
 
-sheet_geometry(hero, runRight2, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
+sheet_geometry(hero, runRight2, -4, 0, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runRight3, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+sheet_geometry(hero, runRight3, 0, -2, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
 
-sheet_geometry(hero, runRight4, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 24).
+sheet_geometry(hero, runRight4, -3, 0, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 24).
 
-sheet_geometry(hero, jumpLeft, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
+sheet_geometry(hero, jumpLeft, -4, -2, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
 
-sheet_geometry(hero, jumpRight, 78, 90, "megaman/jump-right.png", 0, 0, 26, 30).
+sheet_geometry(hero, jumpRight, -6, -2, 72, 90, "megaman/jump-right.png", 0, 0, 26, 30).
 
 %%%%%%%%%%%
 
-sheet_geometry(brick, brick, 32, 32, "placeholders/brick-16x16.png", 0, 0, 16, 16).
+hitbox_dimensions(brick, 32, 32).
+
+sheet_geometry(brick, brick, 0, 0, 32, 32, "placeholders/brick-16x16.png", 0, 0, 16, 16).
 
 %%%%%%%%%%%%
-
-sheet_geometry(goal, goal, 32, 32, "placeholders/goal-32x32.png", 0, 0, 32, 32).
-
-sprite_height(TypeId, Sprite, Height):-
-	sheet_geometry(TypeId, Sprite, _Width, Height, _SheetName, _SheetOffsetX, _SheetOffsetY, _SheetWidth, _SheetHeight).
-
-sprite_width(TypeId, Sprite, Width):-
-	sheet_geometry(TypeId, Sprite, Width, _Height, _SheetName, _SheetOffsetX, _SheetOffsetY, _SheetWidth, _SheetHeight).
 
 % We render 25 fps, run cycle is 5 frames per sprite.
 % We want XSpeed to be 4 game units per frame (megaman is 4.125 units per frame)
@@ -69,7 +81,6 @@ anim_frame(Tick, 4):-
 % facing is left, right, or none
 % mob(type_identifier, xposition, yposition, xspeed, yspeed, facing)
 % xposition and yposition are abstract, but probably the bottom left corner of the sprite
-
 
 sprite_sheet(hero, 0, 0, left, _Tick, standLeft).
 

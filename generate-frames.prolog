@@ -29,17 +29,18 @@ main(_Argv):-
 % 1280 x 720 abstract units of width and height
 % (for comparison, NES is 240 x 240 pixels, each pixel is 8:7)
 
-after_agents(Mobs, Tick, NewMobs):-
+after_agents(Mobs, NewMobs):-
 	control_hero(
 		box(360, 2000, 32, 32), % Target
-		Mobs, Tick,
+		Mobs,
 		NewMobs).
 
 is_endgame([], _Tick, _Bounds).
 
-is_endgame(Mobs, Tick, level_dimensions(LevelWidth, LevelHeight)):-
+% TODO Remove _Tick argument
+is_endgame(Mobs, _Tick, level_dimensions(LevelWidth, LevelHeight)):-
 	include(mob_type(hero), Mobs, [Hero]),
-	sprite_box(Tick, Hero, box(Left, Top, Width, Height)),
+	mob_box(Hero, box(Left, Top, Width, Height)),
 	( Left + Width #< 0;  Left #> LevelWidth; Top + Height #< 0; Top #> LevelHeight ).
 
 % We center the viewport on the hero's left heel, which is
@@ -56,18 +57,16 @@ viewport_follows_hero(Mobs, level_dimensions(LevelWidth, LevelHeight), viewport(
 
 
 writable_mob(Tick, Viewport, Mob, Write):-
-	Mob = mob(TypeId, XPosition, BottomYPosition, XSpeed, YSpeed, Facing),
+	Mob = mob(TypeId, _RawLeft, _RawBottom, XSpeed, YSpeed, Facing),
+	mob_box(Mob, box(HitLeft, HitTop, _HitWidth, _HitHeight)),
 	sprite_sheet(TypeId, XSpeed, YSpeed, Facing, Tick, Sprite),
-	sheet_geometry(TypeId, Sprite, LevelWidth, LevelHeight, SheetName, SheetX, SheetY, SheetWidth, SheetHeight),
-	% game geometry positions things at their bottom left corners, but
-	% the renderer needs top left corners
-	TopYPosition #= BottomYPosition - LevelHeight,
+	sheet_geometry(TypeId, Sprite,
+			 LevelOffsetX, LevelOffsetY, LevelWidth, LevelHeight,
+			 SheetName, SheetX, SheetY, SheetWidth, SheetHeight),
 
 	Viewport = viewport(VLeft, VTop, _VWidth, _VHeight),
-
-	% TODO: Cull stuff that isn't in the viewport
-	ViewportX #= XPosition - VLeft,
-	ViewportY #= TopYPosition - VTop,
+	ViewportX #= (HitLeft + LevelOffsetX) - VLeft,
+	ViewportY #= (HitTop + LevelOffsetY) - VTop,
 
 	Write =  writable{
 		type_id:TypeId,
@@ -101,8 +100,8 @@ game(StartState, Tick, LevelDimensions, ViewportDimensions):-
 	is_endgame(StartState, Tick, LevelDimensions);
 	Tick > 1000;
 	!,
-	after_physics(StartState, Tick, PostPhysicsState),
-	after_agents(PostPhysicsState, Tick, NewState),
+	after_physics(StartState, PostPhysicsState),
+	after_agents(PostPhysicsState, NewState),
 	ViewportDimensions = viewport_dimensions(VWidth, VHeight),
 	Viewport = viewport(_VLeft, _VTop, VWidth, VHeight),
 	viewport_follows_hero(NewState, LevelDimensions, Viewport),
@@ -126,19 +125,3 @@ test_game():-
 		0,
 		level_dimensions(1280, 1280),
 		viewport_dimensions(1280, 720)).
-
-
-:- begin_tests(game).
-
-minimum_absolute_delta(331, 312, 312, 312).
-
-sprite_box(20, mob(brick, 96, 344, none, none, neutral), box(96, 312, 32, 32)).
-
-mob_move_y(mob(hero, 84, 310, 4, 21, right), 20, [box(96, 312, 32, 32), box(128, 312, 32, 32)], mob(hero, 84, 311, 4, 0, right)).
-
-after_physics(
-	[mob(hero,80,310,4,20,right),mob(brick,96,344,none,none,neutral)],20,
-	[mob(hero, 84, 311, 4, 0, right), mob(brick, 96, 344, none, none, neutral)]
-	).
-
-:- end_tests(game).

@@ -1,6 +1,6 @@
 :- module(physics, 
     [
-        after_physics/3,
+        after_physics/2,
         box_top/2,
         box_bottom/2,
         box_left/2,
@@ -118,19 +118,18 @@ mob_move_x_toward_facing(Mob, Moved):-
 	Moved = mob(TypeId, TargetX, YPosition, XSpeed, YSpeed, left).
 
 
-mob_move_x(Mob, _Tick, _Collidables, Mob):-
+mob_move_x(Mob, _Collidables, Mob):-
 	Mob = mob(_TypeId, _XPosition, _YPosition, none, _YSpeed, _Facing).
 
-mob_move_x(Mob, Tick, Collidables, Moved):-
+mob_move_x(Mob, Collidables, Moved):-
 	mob_move_x_toward_facing(Mob, MoveTarget),
-	sprite_box(Tick, MoveTarget, TargetBox),
+	mob_box(MoveTarget, TargetBox),
 	MoveTarget = mob(TypeId, _TargetX, YPosition, _XSpeed, YSpeed, Facing),
 	(
 		
 		Facing = right ->
 			move_right_until_collision(TargetBox, Collidables, LeftBarrier),
-			sprite_sheet(TypeId, 0, YSpeed, Facing, Tick, Sprite),
-			sprite_width(TypeId, Sprite, Width),
+			hitbox_dimensions(TypeId, Width, _Height),
 			FinalX #= LeftBarrier - Width,
 			Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing)
 		;
@@ -139,14 +138,14 @@ mob_move_x(Mob, Tick, Collidables, Moved):-
 			Moved = mob(TypeId, RightBarrier, YPosition, 0, YSpeed, Facing)
 	).
 
-mob_move_y(Mob, _Tick, _Collidables, Mob):-
+mob_move_y(Mob, _Collidables, Mob):-
 	Mob = mob(_TypeId, _XPosition, _YPosition, _XSpeed, none, _Facing).	
 
-mob_move_y(Mob, Tick, Collidables, Moved):-
+mob_move_y(Mob, Collidables, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
 	TargetY #= YPosition + YSpeed,
 	TargetMove = mob(TypeId, XPosition, TargetY, XSpeed, YSpeed, Facing),
-	sprite_box(Tick, TargetMove, TargetBox),
+	mob_box(TargetMove, TargetBox),
 	(
 		YSpeed #> 0 ->
 			move_down_until_collision(TargetBox, Collidables, BarrierBelow),
@@ -155,8 +154,7 @@ mob_move_y(Mob, Tick, Collidables, Moved):-
 		;
 		YSpeed #< 0 ->
 			move_up_until_collision(TargetBox, Collidables, BarrierAbove),
-			sprite_sheet(TypeId, XSpeed, 0, Tick, Facing, Sprite),
-			sprite_height(TypeId, Sprite, Height),
+			hitbox_dimensions(TypeId, _Width, Height),
 			FinalY #= BarrierAbove + Height + 1,
 			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
 		;
@@ -164,9 +162,9 @@ mob_move_y(Mob, Tick, Collidables, Moved):-
 			Moved = TargetMove
 	).
 
-mob_move(Mob, Tick, Collidables, Moved):-
-	mob_move_x(Mob, Tick, Collidables, XMoved),
-	mob_move_y(XMoved, Tick, Collidables, Moved).
+mob_move(Mob, Collidables, Moved):-
+	mob_move_x(Mob, Collidables, XMoved),
+	mob_move_y(XMoved, Collidables, Moved).
 
 gravity(Mob, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
@@ -178,14 +176,12 @@ gravity(Mob, Moved):-
 		Moved = mob(TypeId, XPosition, YPosition, XSpeed, NewSpeed, Facing)
 	).
 
-after_physics(Mobs, Tick, [Moved|Others]):-
+after_physics(Mobs, [Moved|Others]):-
 	maplist(gravity(), Mobs, Accellerated),
 	partition(mob_type(hero), Accellerated, [Mover], Others),
     % TODO: Support multiple movers in here!
-	maplist(sprite_box(Tick), Others, Collidables),
-
-	% WHY DOES THIS ALLOW FOR MULTIPLE SOLUTIONS?
-	mob_move(Mover, Tick, Collidables, Moved).
+	maplist(mob_box(), Others, Collidables),
+	mob_move(Mover, Collidables, Moved).
 
 :- begin_tests(physics).
 
