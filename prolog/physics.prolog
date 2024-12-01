@@ -80,7 +80,7 @@ move_left_until_collision(TargetBox, Collidables, RightBarrier):-
 		[Rt | RtList] = CollisionRights ->
 		foldl(minimum_absolute_delta(Frontier), RtList, Rt, RightBarrier)
 		;
-		RightBarrier #= Frontier + 1
+		RightBarrier #= Frontier - 1
 	).
 
 move_up_until_collision(TargetBox, Collidables, BarrierAbove):-
@@ -188,17 +188,23 @@ after_physics(Mobs, [Moved|Others]):-
 test(clear_left_path):-
 	findall(Moved, 
 		physics:mob_move_x(
-			mob(hero, 315, 311, 5, 1, left), 999, 
+			mob(hero, 315, 311, 5, 1, left), 
 			[box(288, 312, 32, 32), box(320, 312, 32, 32)], Moved),[mob(hero, 310, 311, 5, 1, left)]).
+
+test(clear_right_path):-
+	findall(Moved, 
+		physics:mob_move_x(
+			mob(hero, 315, 311, 5, 1, right), 
+			[box(288, 312, 32, 32), box(320, 312, 32, 32)], Moved),[mob(hero, 320, 311, 5, 1, left)]).
 
 test(after_physics):-
 	findall(MovedHero,
-	after_physics(
+	physics:after_physics(
 		[
 			mob(hero, 315, 311, 5, 0, left),
 			mob(brick, 288, 344, none, none, neutral),
 			mob(brick, 320, 344, none, none, neutral)
-		], 999,
+		],
 		[
 			MovedHero,
 			mob(brick, 288, 344, none, none, neutral),
