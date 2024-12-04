@@ -14,8 +14,6 @@
 % This is here because I don't know how to make (-)/2 work reliably
 strategy_parts(Move, MovedHero, strategy(Move, MovedHero)).
 
-% Produces a next move for a hero from a start to some target
-
 % We can jump our Y speed is zero, and if we'd collide if we moved down.
 standing(Mob, OtherBoxen):-
     mob_speed(speed(_XSpeed, 0, _Facing), Mob),
@@ -52,43 +50,55 @@ moves_from_here(TargetBox, Hero, Platforms, Results):-
         ->  Moves = [ speed(5, 0, right), speed(5, 0, left), speed(5, -18, right), speed(5, -18, left)]
         ;
         % When leaping / falling you can steer X but not Y
-        Moves = [ speed(5, YSpeed, right), speed(5, YSpeed, left) ] 
+        Moves = [ speed(5, YSpeed, right), speed(5, YSpeed, left), speed(0, YSpeed, right) ]
     ),
     maplist(evaluate_move(TargetBox, Hero, Platforms), Moves, MovedHeroes, Qualities),
     maplist(strategy_parts(), Moves, MovedHeroes, Strategies),
     pairs_keys_values(Results, Qualities, Strategies).
 
+% PathTree is a map from DEST to SOURCE, so
+% we can climb from any point to the root of a path.
+
+new_path_tree(Start, PathTree):-
+    rb_empty(NewTree),
+    rb_insert_new(NewTree, root, none, RootTree),
+    rb_insert_new(RootTree, Start, root, PathTree).
+
+% This can fail if NewTree is already in
+% the tree and points to a different OldTree.
+path_tree_add(OldTree, Source, Dest, NewTree):-
+    % We might need some extra information in Source
+    rb_lookup(Source, _Preceeding, OldTree),
+    rb_insert_new(OldTree, Dest, Source, NewTree).
+
+path_to_root(_PathTree, root, []).
+
+path_to_root(PathTree, Tail, [Tail | Rest]):-
+    rb_lookup(Tail, Next, PathTree),
+    path_to_root(PathTree, Next, Rest).
 
 moves_to_target(TargetBox, Mobs, Moves):-
     empty_heap(Fringe), 
-    rb_empty(Marks),
-    moves_to_target(TargetBox, Mobs, Marks, Fringe, Moves).
 
+    include(mob_type(hero), Mobs, [Hero]),
+    new_path_tree(Hero, PathTree),
 
-mark_key(Mob, Key):-
-    mob_left(Left, Mob),
-    mob_bottom(Bottom, Mob),
-    mob_speed(speed(_XSpeed, YSpeed, _Facing), Mob),
-    Key = seen(Left, Bottom, YSpeed).
+    moves_to_target(TargetBox, Mobs, PathTree, Fringe, Moves).
 
-
-next_unmarked_from_fringe(OldFringe, OldMarks, NewFringe, NewMarks, NewPriority, NewStrategy):-
+next_unseen_from_fringe(OldFringe, OldPaths, NewFringe, Source, NewPaths, NewPriority, NewStrategy):-
     get_from_heap(OldFringe, NextPriority, NextStrategy, NextFringe),
     NextStrategy = strategy(_NextMove, MovedHero),
-    mark_key(MovedHero, Mark),
     (
-        rb_lookup(Mark, seen, OldMarks)
-        -> next_unmarked_from_fringe(NextFringe, OldMarks, NewFringe, NewMarks, NewPriority, NewStrategy) 
+        path_tree_add(OldPaths, Source, MovedHero, NewPaths) ->
+            NewStrategy = NextStrategy,
+            NewPriority = NextPriority,
+            NewFringe = NextFringe
         ;
-        rb_insert_new(OldMarks, Mark, seen, NewMarks),
-        NewStrategy = NextStrategy,
-        NewPriority = NextPriority,
-        NewFringe = NextFringe
+        next_unseen_from_fringe(NextFringe, OldPaths, NewFringe, Source, NewPaths, NewPriority, NewStrategy) 
     ).
 
-
 % Prevent cycles by comitting to a single direction at any standing level.
-moves_to_target(TargetBox, Mobs, Marks, Fringe, [NextMove| Rest]):-
+moves_to_target(TargetBox, Mobs, Paths, Fringe, [NextMove| Rest]):-
     partition(mob_type(hero), Mobs, [Hero], Platforms),
 
     % TODO: Fring grows without bound. So BOUND it, by moving target into some close proximity
@@ -96,13 +106,16 @@ moves_to_target(TargetBox, Mobs, Marks, Fringe, [NextMove| Rest]):-
     list_to_heap(NewMoves, NewHeap),
     merge_heaps(Fringe, NewHeap, AllFringe),
 
-    next_unmarked_from_fringe(AllFringe, Marks, NextFringe, NextMarks, Priority, NextMove),
+    next_unseen_from_fringe(AllFringe, Paths, NextFringe, Hero, NextPaths, Priority, NextMove),
+    NextMove = strategy(_M, MovedHero),
     (
         Priority #= 0
-        ->  Rest = []
+        ->  Rest = [],
+        path_to_root(NextPaths, MovedHero, Path),
+        reverse(Path, FromStart),
+        write("# > PATH: "), write(FromStart), nl
         ;
-        NextMove = strategy(_M, MovedHero),
-        moves_to_target(TargetBox, [MovedHero|Platforms], NextMarks, NextFringe, Rest)
+        moves_to_target(TargetBox, [MovedHero|Platforms], NextPaths, NextFringe, Rest)
     ).
 
 

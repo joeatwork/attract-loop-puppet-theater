@@ -172,6 +172,10 @@ gravity(Mob, Moved):-
 		YSpeed = none
 		-> Moved = Mob
 		;
+		YSpeed #>= 45
+		-> NewSpeed #= 45,
+		Moved = mob(TypeId, XPosition, YPosition, XSpeed, NewSpeed, Facing)
+		;
 		NewSpeed #= YSpeed + 1,
 		Moved = mob(TypeId, XPosition, YPosition, XSpeed, NewSpeed, Facing)
 	).
