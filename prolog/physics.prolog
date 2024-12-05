@@ -61,49 +61,31 @@ minimum_absolute_delta(Target, Other1, Other2, Min):-
 	AD2 #= abs(Target - Other2),
 	min_pair(AD1-Other1, AD2-Other2, _Abs-Min).
 
+% *_until_collision/3 fail if no collision occurs
+
 move_right_until_collision(TargetBox, Collidables, LeftBarrier):-
 	collisions(TargetBox, Collidables, Collisions),
-	maplist(box_left(), CollisionLefts, Collisions),
+	maplist(box_left(), [Lft|LftList], Collisions),
 	box_right(Frontier, TargetBox),
-	(
-		[Lft|LftList] = CollisionLefts ->
-			foldl(minimum_absolute_delta(Frontier), LftList, Lft, LeftBarrier)
-		;
-		LeftBarrier #= Frontier + 1
-	).
+	foldl(minimum_absolute_delta(Frontier), LftList, Lft, LeftBarrier).
 
 move_left_until_collision(TargetBox, Collidables, RightBarrier):-
 	collisions(TargetBox, Collidables, Collisions),
-	maplist(box_right(), CollisionRights, Collisions),
+	maplist(box_right(), [Rt|RtList], Collisions),
 	box_left(Frontier, TargetBox),
-	(
-		[Rt | RtList] = CollisionRights ->
-		foldl(minimum_absolute_delta(Frontier), RtList, Rt, RightBarrier)
-		;
-		RightBarrier #= Frontier - 1
-	).
+	foldl(minimum_absolute_delta(Frontier), RtList, Rt, RightBarrier).
 
 move_up_until_collision(TargetBox, Collidables, BarrierAbove):-
 	collisions(TargetBox, Collidables, Collisions),
-	maplist(box_bottom(), CollisionBottoms, Collisions),
+	maplist(box_bottom(), [Btm|BtmList], Collisions),
 	box_top(Frontier, TargetBox),
-	(
-		[Btm| BtmList] = CollisionBottoms -> 
-			foldl(minimum_absolute_delta(Frontier), BtmList, Btm, BarrierAbove)
-		;
-		BarrierAbove #= Frontier - 1
-	).
+	foldl(minimum_absolute_delta(Frontier), BtmList, Btm, BarrierAbove).
 
 move_down_until_collision(TargetBox, Collidables, BarrierBelow):-
 	collisions(TargetBox, Collidables, Collisions),
-	maplist(box_top(), CollisionTops, Collisions),
+	maplist(box_top(), [Top|TopList], Collisions),
 	box_bottom(Frontier, TargetBox),
-	( 
-		[Top|TopList] = CollisionTops -> 
-			foldl(minimum_absolute_delta(Frontier), TopList, Top, BarrierBelow)
-		;
-		BarrierBelow #= Frontier + 1
-	).
+	foldl(minimum_absolute_delta(Frontier), TopList, Top, BarrierBelow).
 
 mob_move_x_toward_facing(Mob, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, right),
@@ -128,14 +110,22 @@ mob_move_x(Mob, Collidables, Moved):-
 	(
 		
 		Facing = right ->
-			move_right_until_collision(TargetBox, Collidables, LeftBarrier),
-			hitbox_dimensions(TypeId, Width, _Height),
-			FinalX #= LeftBarrier - Width,
-			Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing)
+			(
+				move_right_until_collision(TargetBox, Collidables, LeftBarrier) ->
+					hitbox_dimensions(TypeId, Width, _Height),
+					FinalX #= LeftBarrier - Width,
+					Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing)
+				;
+				Moved = MoveTarget
+			)
 		;
-		Facing = left ->
-			move_left_until_collision(TargetBox, Collidables, RightBarrier),
-			Moved = mob(TypeId, RightBarrier, YPosition, 0, YSpeed, Facing)
+		Facing = left -> 
+		(
+			move_left_until_collision(TargetBox, Collidables, RightBarrier) ->
+				Moved = mob(TypeId, RightBarrier, YPosition, 0, YSpeed, Facing)
+			;
+			Moved = MoveTarget
+		)
 	).
 
 mob_move_y(Mob, _Collidables, Mob):-
@@ -147,19 +137,16 @@ mob_move_y(Mob, Collidables, Moved):-
 	TargetMove = mob(TypeId, XPosition, TargetY, XSpeed, YSpeed, Facing),
 	mob_box(TargetMove, TargetBox),
 	(
-		YSpeed #> 0 ->
-			move_down_until_collision(TargetBox, Collidables, BarrierBelow),
-			FinalY #= BarrierBelow - 1,
-			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
+		(YSpeed #> 0, move_down_until_collision(TargetBox, Collidables, BarrierBelow)) ->
+				FinalY #= BarrierBelow - 1,
+				Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
 		;
-		YSpeed #< 0 ->
-			move_up_until_collision(TargetBox, Collidables, BarrierAbove),
+		(YSpeed #< 0, move_up_until_collision(TargetBox, Collidables, BarrierAbove)) -> 
 			hitbox_dimensions(TypeId, _Width, Height),
 			FinalY #= BarrierAbove + Height + 1,
 			Moved = mob(TypeId, XPosition, FinalY, XSpeed, 0, Facing)
 		;
-		YSpeed #= 0 ->
-			Moved = TargetMove
+		Moved = TargetMove
 	).
 
 mob_move(Mob, Collidables, Moved):-
