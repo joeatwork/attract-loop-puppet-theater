@@ -62,19 +62,23 @@ moves_from_here(TargetBox, Hero, Platforms, Results):-
 new_path_tree(Start, PathTree):-
     rb_empty(NewTree),
     rb_insert_new(NewTree, root, none, RootTree),
-    rb_insert_new(RootTree, Start, root, PathTree).
+    mob_box(Start, Key),
+    rb_insert_new(RootTree, Key, root, PathTree).
 
 % This can fail if NewTree is already in
 % the tree and points to a different OldTree.
 path_tree_add(OldTree, Source, Dest, NewTree):-
     % We might need some extra information in Source
-    rb_lookup(Source, _Preceeding, OldTree),
-    rb_insert_new(OldTree, Dest, Source, NewTree).
+    mob_box(Source, SourceKey),
+    rb_lookup(SourceKey, _Preceeding, OldTree),
+    mob_box(Dest, DestKey),
+    rb_insert_new(OldTree, DestKey, Source, NewTree).
 
 path_to_root(_PathTree, root, []).
 
 path_to_root(PathTree, Tail, [Tail | Rest]):-
-    rb_lookup(Tail, Next, PathTree),
+    mob_box(Tail, TailKey),
+    rb_lookup(TailKey, Next, PathTree),
     path_to_root(PathTree, Next, Rest).
 
 moves_to_target(TargetBox, Mobs, Moves):-
