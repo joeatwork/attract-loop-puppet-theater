@@ -39,11 +39,17 @@ control_hero(TargetBox, Mobs, InvalidState, UpdatedState, UpdatedMobs):-
 % Quality varies with distance to TargetBox
 evaluate_move(TargetBox, Hero, Platforms, Move, MovedHero, Quality):-
     mob_with_speed(Move, Hero, NextHero),
-    % Something kinda wacky - why doesn't MovedHero have a speed?
     after_physics([NextHero|Platforms], Moved),
     include(mob_type(hero), Moved, [MovedHero]),
     mob_box(MovedHero, DestBox),
-    box_distance_squared(TargetBox, DestBox, Quality).
+    box_distance_squared(TargetBox, DestBox, RealQuality),
+    % Tiny tie-breaker for facing
+    mob_speed(speed(_XSpeed, _YSpeed, Facing), MovedHero),
+    ( 
+        Facing = left -> Quality #= RealQuality + 1
+        ;
+        Quality = RealQuality
+    ).
 
 
 % Moves = [Quality-Strategy | _]
