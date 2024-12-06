@@ -1,4 +1,4 @@
-:- module(goal_agent, [control_hero/3]).
+:- module(goal_agent, [control_hero/5]).
 
 :- use_module(library(clpfd)).
 :- use_module(library(rbtrees)).
@@ -21,19 +21,25 @@ standing(Mob, OtherBoxen):-
     move_box(0, 1, Bounds, Sink),
     collisions(Sink, OtherBoxen, [_Footing|_Rest]).
 
+% plan(TargetBox, PathTree)
 
-control_hero(TargetBox, Mobs, [NewHero | Remainder]):-
+control_hero(TargetBox, Mobs, agent_state(TargetBox, [PlanH|PlanL]), agent_state(TargetBox, PlanL), [NewHero|Remainder]):-
     partition(mob_type(hero), Mobs, [Hero], Remainder),
-    include(mob_speed(speed(none, none, _Facing)), Remainder, Platforms),
-
-    % TODO: Hero should STAND when arriving at the goal.
-    moves_to_target(TargetBox, [Hero | Platforms], [strategy(NextMove, _Moved)| _Path]),
+    PlanH = strategy(NextMove, _Moved),
     mob_with_speed(NextMove, Hero, NewHero).
 
+
+control_hero(TargetBox, Mobs, InvalidState, UpdatedState, UpdatedMobs):-
+    write("#> Changing strategy for state: "), write(InvalidState), nl,
+    include(mob_type(hero), Mobs, [Hero]),
+    include(mob_speed(speed(none, none, _Facing)), Mobs, Platforms),
+    moves_to_target(TargetBox, [Hero | Platforms], [PlanH| PlanL]),
+    control_hero(TargetBox, Mobs, agent_state(TargetBox, [PlanH|PlanL]), UpdatedState, UpdatedMobs).
 
 % Quality varies with distance to TargetBox
 evaluate_move(TargetBox, Hero, Platforms, Move, MovedHero, Quality):-
     mob_with_speed(Move, Hero, NextHero),
+    % Something kinda wacky - why doesn't MovedHero have a speed?
     after_physics([NextHero|Platforms], Moved),
     include(mob_type(hero), Moved, [MovedHero]),
     mob_box(MovedHero, DestBox),

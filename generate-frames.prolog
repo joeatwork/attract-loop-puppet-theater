@@ -29,10 +29,12 @@ main(_Argv):-
 % 1280 x 720 abstract units of width and height
 % (for comparison, NES is 240 x 240 pixels, each pixel is 8:7)
 
-after_agents(Mobs, NewMobs):-
+after_agents(Mobs, AgentState, NewAgentState, NewMobs):-
 	control_hero(
 		box(360, 2000, 32, 32), % Target
 		Mobs,
+		AgentState,
+		NewAgentState,
 		NewMobs).
 
 is_endgame([], _Tick, _Bounds).
@@ -96,22 +98,22 @@ write_state(Tick, Viewport, State):-
 
 % A game produces "done" after writing a list of frames
 
-game(StartState, Tick, LevelDimensions, ViewportDimensions):-
-	is_endgame(StartState, Tick, LevelDimensions);
+game(StartMobs, Tick, AgentState, LevelDimensions, ViewportDimensions):-
+	is_endgame(StartMobs, Tick, LevelDimensions);
 	Tick > 1000;
 	!,
-	after_physics(StartState, PostPhysicsState),
-	after_agents(PostPhysicsState, NewState),
+	after_physics(StartMobs, PostPhysicsState),
+	after_agents(PostPhysicsState, AgentState, NewAgentState, NewMobs),
 	ViewportDimensions = viewport_dimensions(VWidth, VHeight),
 	Viewport = viewport(_VLeft, _VTop, VWidth, VHeight),
-	viewport_follows_hero(NewState, LevelDimensions, Viewport),
+	viewport_follows_hero(NewMobs, LevelDimensions, Viewport),
 	write(current_output, "## VIEWPORT: "), write(current_output, Viewport), nl,
 
 	NextTick #= Tick + 1,
-	write(current_output, "# "), write(current_output, next_state(NewState, NextTick)), nl,
-	write_state(Tick, Viewport, NewState),
+	write(current_output, "# "), write(current_output, next_state(NewMobs, NextTick)), nl,
+	write_state(Tick, Viewport, NewMobs),
 
-	( StartState = NewState; game(NewState, NextTick, LevelDimensions, ViewportDimensions)).
+	( StartMobs = NewMobs; game(NewMobs, NextTick, NewAgentState, LevelDimensions, ViewportDimensions)).
 
 test_game():-
 	% Need a better way to describe the initial state of a level
@@ -123,5 +125,6 @@ test_game():-
 			mob(brick, 320, 344, none, none, neutral)
 		],
 		0,
+		no_initial_state,
 		level_dimensions(1280, 1280),
 		viewport_dimensions(1280, 720)).
