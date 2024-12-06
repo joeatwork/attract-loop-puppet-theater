@@ -102,18 +102,18 @@ game(StartMobs, Tick, AgentState, LevelDimensions, ViewportDimensions):-
 	is_endgame(StartMobs, Tick, LevelDimensions);
 	Tick > 1000;
 	!,
-	after_physics(StartMobs, PostPhysicsState),
-	after_agents(PostPhysicsState, AgentState, NewAgentState, NewMobs),
+	after_agents(StartMobs, AgentState, NewAgentState, IntentionMobs),
+	after_physics(IntentionMobs, MovedMobs),
 	ViewportDimensions = viewport_dimensions(VWidth, VHeight),
 	Viewport = viewport(_VLeft, _VTop, VWidth, VHeight),
-	viewport_follows_hero(NewMobs, LevelDimensions, Viewport),
+	viewport_follows_hero(MovedMobs, LevelDimensions, Viewport),
 	write(current_output, "## VIEWPORT: "), write(current_output, Viewport), nl,
 
 	NextTick #= Tick + 1,
-	write(current_output, "# "), write(current_output, next_state(NewMobs, NextTick)), nl,
-	write_state(Tick, Viewport, NewMobs),
+	write(current_output, "# "), write(current_output, next_state(MovedMobs, NextTick)), nl,
+	write_state(Tick, Viewport, MovedMobs),
 
-	( StartMobs = NewMobs; game(NewMobs, NextTick, NewAgentState, LevelDimensions, ViewportDimensions)).
+	( StartMobs = MovedMobs; game(MovedMobs, NextTick, NewAgentState, LevelDimensions, ViewportDimensions)).
 
 test_game():-
 	% Need a better way to describe the initial state of a level
