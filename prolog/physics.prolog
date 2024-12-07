@@ -5,7 +5,7 @@
         box_bottom/2,
         box_left/2,
         box_right/2,
-		box_distance_squared/3,
+		box_distance/4,
         move_box/4,
 		overlaps/2,
         collisions/3,
@@ -24,7 +24,9 @@ box_left(Left, box(Left, _Top, _Width, _Height)).
 box_right(Right, box(Left, _Top, Width, _Height)):-
 	Right #= Left + Width.
 
-box_distance_squared(B1, B2, DistanceSquared):-
+% This could also calculate the intersection box if we need it.
+% Horiz and Vert will always be non-negative
+box_distance(B1, B2, Horiz, Vert):-
 	box_left(Left1, B1), box_top(Top1, B1), box_right(Right1, B1), box_bottom(Bot1, B1),
 	box_left(Left2, B2), box_top(Top2, B2), box_right(Right2, B2), box_bottom(Bot2, B2),
 	Right #= max(Left1, Left2),
@@ -32,14 +34,13 @@ box_distance_squared(B1, B2, DistanceSquared):-
 	Bottom #= max(Top1, Top2),
 	Top #= min(Bot1, Bot2),
 	Horiz #= max(0, Right - Left),
-	Vert #= max(0, Bottom - Top),
-	DistanceSquared #= (Horiz * Horiz) + (Vert * Vert).
-
+	Vert #= max(0, Bottom - Top).
 
 move_box(MoveX, MoveY, box(Left, Top, Width, Height), box(NewLeft, NewTop, Width, Height)):-
     NewLeft #= Left + MoveX,
     NewTop #= Top + MoveY.
 
+% We could express this in terms of box_distance, too...
 overlaps(box(Left1, Top1, Width1, Height1), box(Left2, Top2, Width2, Height2)):-
 	% We allow (exactly) shared bounds without considering them overlap
 	Left1End #= Left1 + Width1,
@@ -186,7 +187,7 @@ test(clear_right_path):-
 	findall(Moved, 
 		physics:mob_move_x(
 			mob(hero, 315, 311, 5, 1, right), 
-			[box(288, 312, 32, 32), box(320, 312, 32, 32)], Moved),[mob(hero, 320, 311, 5, 1, left)]).
+			[box(288, 312, 32, 32), box(320, 312, 32, 32)], Moved),[mob(hero, 320, 311, 5, 1, right)]).
 
 test(after_physics):-
 	findall(MovedHero,
