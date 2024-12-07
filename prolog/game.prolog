@@ -1,4 +1,4 @@
-:- module(game, [game/5]).
+:- module(game, [run_game/4]).
 
 % Produces a stream of newline delimited JSON objects,
 % each of which describes an animation frame. Intended for use
@@ -24,14 +24,6 @@
 % 16:9 screen aspect ratio
 % 1280 x 720 abstract units of width and height
 % (for comparison, NES is 240 x 240 pixels, each pixel is 8:7)
-
-after_agents(Mobs, AgentState, NewAgentState, NewMobs):-
-	control_hero(
-		box(360, 2000, 32, 32), % Target
-		Mobs,
-		AgentState,
-		NewAgentState,
-		NewMobs).
 
 is_endgame([], _Tick, _Bounds).
 
@@ -94,11 +86,11 @@ write_state(Tick, Viewport, State):-
 
 % A game produces "done" after writing a list of frames
 
-game(StartMobs, Tick, AgentState, LevelDimensions, ViewportDimensions):-
+game(Tick, AgentState, StartMobs, TargetBox, LevelDimensions, ViewportDimensions):-
 	is_endgame(StartMobs, Tick, LevelDimensions);
 	Tick > 1000;
 	!,
-	after_agents(StartMobs, AgentState, NewAgentState, IntentionMobs),
+	control_hero(TargetBox, StartMobs, AgentState, NewAgentState, IntentionMobs),
 	after_physics(IntentionMobs, MovedMobs),
 	ViewportDimensions = viewport_dimensions(VWidth, VHeight),
 	Viewport = viewport(_VLeft, _VTop, VWidth, VHeight),
@@ -109,4 +101,13 @@ game(StartMobs, Tick, AgentState, LevelDimensions, ViewportDimensions):-
 	write(current_output, "# "), write(current_output, next_state(MovedMobs, NextTick)), nl,
 	write_state(Tick, Viewport, MovedMobs),
 
-	( StartMobs = MovedMobs; game(MovedMobs, NextTick, NewAgentState, LevelDimensions, ViewportDimensions)).
+	( StartMobs = MovedMobs; game(NextTick, NewAgentState, MovedMobs, TargetBox, LevelDimensions, ViewportDimensions)).
+
+
+run_game(StartMobs, TargetBox, LevelDimensions, ViewportDimensions):-
+	game(0, % Tick 
+		none, % AgentState
+		StartMobs,
+		TargetBox,
+		LevelDimensions,
+		ViewportDimensions).

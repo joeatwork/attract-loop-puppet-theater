@@ -7,7 +7,7 @@
 % Most basic test - hero has to run to the edge of a platform and then angle back in
 main(_Argv):-
     % Need a better way to describe the initial state of a level
-    game(
+    run_game(
         [
             mob(hero, 320, 311, 0, 0, right),
         
@@ -18,7 +18,6 @@ main(_Argv):-
             mob(brick, 416, 344, none, none, neutral),
             mob(brick, 448, 344, none, none, neutral)
         ],
-        0,
-        none, % intiial agent state
+        box(360, 2000, 32, 32),
         level_dimensions(1280, 1280),
         viewport_dimensions(1280, 720)).
