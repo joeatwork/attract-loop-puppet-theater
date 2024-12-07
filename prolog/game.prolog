@@ -1,4 +1,4 @@
-#!/usr/bin/env swipl
+:- module(game, [game/5]).
 
 % Produces a stream of newline delimited JSON objects,
 % each of which describes an animation frame. Intended for use
@@ -14,10 +14,6 @@
 :- use_module(prolog/mobs).
 :- use_module(prolog/physics).
 
-:- initialization(main, main).
-
-main(_Argv):-
-	test_game().
 
 % Y speed is positive toward the bottom of the screen and negative
 % toward the top of the screen.
@@ -114,21 +110,3 @@ game(StartMobs, Tick, AgentState, LevelDimensions, ViewportDimensions):-
 	write_state(Tick, Viewport, MovedMobs),
 
 	( StartMobs = MovedMobs; game(MovedMobs, NextTick, NewAgentState, LevelDimensions, ViewportDimensions)).
-
-test_game():-
-	% Need a better way to describe the initial state of a level
-	game(
-		[
-			mob(hero, 320, 311, 0, 0, right),
-
-			mob(brick, 288, 344, none, none, neutral),
-			mob(brick, 320, 344, none, none, neutral),
-			mob(brick, 352, 344, none, none, neutral),
-			mob(brick, 384, 344, none, none, neutral),
-			mob(brick, 416, 344, none, none, neutral),
-			mob(brick, 448, 344, none, none, neutral)
-		],
-		0,
-		none, % intiial agent state
-		level_dimensions(1280, 1280),
-		viewport_dimensions(1280, 720)).
