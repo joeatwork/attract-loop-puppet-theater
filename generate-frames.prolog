@@ -122,7 +122,11 @@ test_game():-
 			mob(hero, 320, 311, 0, 0, right),
 
 			mob(brick, 288, 344, none, none, neutral),
-			mob(brick, 320, 344, none, none, neutral)
+			mob(brick, 320, 344, none, none, neutral),
+			mob(brick, 352, 344, none, none, neutral),
+			mob(brick, 384, 344, none, none, neutral),
+			mob(brick, 416, 344, none, none, neutral),
+			mob(brick, 448, 344, none, none, neutral)
 		],
 		0,
 		no_initial_state,

@@ -11,8 +11,7 @@
 % Walk/run speed is positive 5 or 0 (facing determines direction)
 % Jump is a one-time positive 18, if Y speed is zero AND there is a platform
 
-% This is here because I don't know how to make (-)/2 work reliably
-strategy_parts(Move, MovedHero, strategy(Move, MovedHero)).
+strategy_parts(Source, Move, MovedHero, strategy(Source, Move, MovedHero)).
 
 % We can jump our Y speed is zero, and if we'd collide if we moved down.
 standing(Mob, OtherBoxen):-
@@ -25,7 +24,7 @@ standing(Mob, OtherBoxen):-
 
 control_hero(TargetBox, Mobs, agent_state(TargetBox, [PlanH|PlanL]), agent_state(TargetBox, PlanL), [NewHero|Remainder]):-
     partition(mob_type(hero), Mobs, [Hero], Remainder),
-    PlanH = strategy(NextMove, _Moved),
+    PlanH = strategy(_Source, NextMove, _Moved),
     mob_with_speed(NextMove, Hero, NewHero).
 
 
@@ -52,7 +51,6 @@ evaluate_move(TargetBox, Hero, Platforms, Move, MovedHero, Quality):-
     ).
 
 
-% Moves = [Quality-Strategy | _]
 moves_from_here(TargetBox, Hero, Platforms, Results):-
     mob_speed(speed(_XSpeed, YSpeed, _Facing), Hero),
     maplist(mob_box(), Platforms, PlatformBoxen),
@@ -65,7 +63,7 @@ moves_from_here(TargetBox, Hero, Platforms, Results):-
         Moves = [ speed(5, YSpeed, right), speed(5, YSpeed, left), speed(0, YSpeed, right) ]
     ),
     maplist(evaluate_move(TargetBox, Hero, Platforms), Moves, MovedHeroes, Qualities),
-    maplist(strategy_parts(), Moves, MovedHeroes, Strategies),
+    maplist(strategy_parts(Hero), Moves, MovedHeroes, Strategies),
     pairs_keys_values(Results, Qualities, Strategies).
 
 % PathTree is a map from DEST to SOURCE, so
@@ -101,29 +99,26 @@ moves_to_target(TargetBox, Mobs, Moves):-
 
     moves_to_target(TargetBox, Mobs, PathTree, Fringe, Moves).
 
-next_unseen_from_fringe(OldFringe, OldPaths, NewFringe, Source, NewPaths, NewPriority, NewStrategy):-
+next_unseen_from_fringe(OldFringe, OldPaths, NewFringe, NewPaths, NewPriority, NewStrategy):-
     get_from_heap(OldFringe, NextPriority, NextStrategy, NextFringe),
-    NextStrategy = strategy(_NextMove, MovedHero),
+    NextStrategy = strategy(SourceHero, _NextMove, MovedHero),
     (
-        path_tree_add(OldPaths, Source, MovedHero, NewPaths) ->
+        path_tree_add(OldPaths, SourceHero, MovedHero, NewPaths) ->
             NewStrategy = NextStrategy,
             NewPriority = NextPriority,
             NewFringe = NextFringe
         ;
-        next_unseen_from_fringe(NextFringe, OldPaths, NewFringe, Source, NewPaths, NewPriority, NewStrategy) 
+        next_unseen_from_fringe(NextFringe, OldPaths, NewFringe, NewPaths, NewPriority, NewStrategy) 
     ).
 
 % Prevent cycles by comitting to a single direction at any standing level.
 moves_to_target(TargetBox, Mobs, Paths, Fringe, [NextMove| Rest]):-
     partition(mob_type(hero), Mobs, [Hero], Platforms),
-
-    % TODO: Fring grows without bound. So BOUND it, by moving target into some close proximity
     moves_from_here(TargetBox, Hero, Platforms, NewMoves),
     list_to_heap(NewMoves, NewHeap),
     merge_heaps(Fringe, NewHeap, AllFringe),
-
-    next_unseen_from_fringe(AllFringe, Paths, NextFringe, Hero, NextPaths, Priority, NextMove),
-    NextMove = strategy(_M, MovedHero),
+    next_unseen_from_fringe(AllFringe, Paths, NextFringe, NextPaths, Priority, NextMove),
+    NextMove = strategy(_Source, _M, MovedHero),
     (
         Priority #= 0
         ->  Rest = [],
