@@ -129,6 +129,6 @@ test_game():-
 			mob(brick, 448, 344, none, none, neutral)
 		],
 		0,
-		no_initial_state,
+		none, % intiial agent state
 		level_dimensions(1280, 1280),
 		viewport_dimensions(1280, 720)).

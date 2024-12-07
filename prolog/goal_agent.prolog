@@ -1,5 +1,4 @@
 :- module(goal_agent, [control_hero/5]).
-
 :- use_module(library(clpfd)).
 :- use_module(library(rbtrees)).
 :- use_module(library(pairs)).
@@ -20,20 +19,26 @@ standing(Mob, OtherBoxen):-
     move_box(0, 1, Bounds, Sink),
     collisions(Sink, OtherBoxen, [_Footing|_Rest]).
 
-% plan(TargetBox, PathTree)
+control_hero(TargetBox, Mobs, agent_state(_Other, []), UpdatedState, UpdatedMobs):-
+    write("#> Changing strategy, ran out of plan"), nl,
+    control_hero(TargetBox, Mobs, none, UpdatedState, UpdatedMobs).
+
+control_hero(NewTarget, Mobs, agent_state(OldTarget, _Plan), UpdatedState, UpdatedMobs):-
+    dif(NewTarget, OldTarget),
+    write("#> Changing strategy, target was "), write(OldTarget), write(" now "), write(NewTarget), nl,
+    control_hero(NewTarget, Mobs, none, UpdatedState, UpdatedMobs).
+
+control_hero(TargetBox, Mobs, none, UpdatedState, UpdatedMobs):-
+    write("#> Resetting state"), nl,
+    include(mob_type(hero), Mobs, [Hero]),
+    include(mob_speed(speed(none, none, _Facing)), Mobs, Platforms),
+    moves_to_target(TargetBox, [Hero | Platforms], [PlanH| PlanL]),
+    control_hero(TargetBox, Mobs, agent_state(TargetBox, [PlanH|PlanL]), UpdatedState, UpdatedMobs).
 
 control_hero(TargetBox, Mobs, agent_state(TargetBox, [PlanH|PlanL]), agent_state(TargetBox, PlanL), [NewHero|Remainder]):-
     partition(mob_type(hero), Mobs, [Hero], Remainder),
     PlanH = strategy(_Source, NextMove, _Moved),
     mob_with_speed(NextMove, Hero, NewHero).
-
-
-control_hero(TargetBox, Mobs, InvalidState, UpdatedState, UpdatedMobs):-
-    write("#> Changing strategy for state: "), write(InvalidState), nl,
-    include(mob_type(hero), Mobs, [Hero]),
-    include(mob_speed(speed(none, none, _Facing)), Mobs, Platforms),
-    moves_to_target(TargetBox, [Hero | Platforms], [PlanH| PlanL]),
-    control_hero(TargetBox, Mobs, agent_state(TargetBox, [PlanH|PlanL]), UpdatedState, UpdatedMobs).
 
 % Quality varies with distance to TargetBox
 evaluate_move(TargetBox, Hero, Platforms, Move, MovedHero, Quality):-
@@ -66,44 +71,40 @@ moves_from_here(TargetBox, Hero, Platforms, Results):-
     maplist(strategy_parts(Hero), Moves, MovedHeroes, Strategies),
     pairs_keys_values(Results, Qualities, Strategies).
 
-% PathTree is a map from DEST to SOURCE, so
+% PathTree is a map from DEST to strategy(_, _, DEST), so
 % we can climb from any point to the root of a path.
-
-new_path_tree(Start, PathTree):-
-    rb_empty(NewTree),
-    rb_insert_new(NewTree, root, none, RootTree),
-    mob_box(Start, Key),
-    rb_insert_new(RootTree, Key, root, PathTree).
 
 % This can fail if NewTree is already in
 % the tree and points to a different OldTree.
-path_tree_add(OldTree, Source, Dest, NewTree):-
-    % We might need some extra information in Source
-    mob_box(Source, SourceKey),
-    rb_lookup(SourceKey, _Preceeding, OldTree),
-    mob_box(Dest, DestKey),
-    rb_insert_new(OldTree, DestKey, Source, NewTree).
+path_tree_add(OldTree, Strategy, NewTree):-
+    Strategy = strategy(SourceHero, _NextMove, DestHero),
+    mob_box(SourceHero, SourceKey),
+    mob_box(DestHero, DestKey),
+    (
+        rb_lookup(SourceKey, _Preceeding, OldTree) ->
+            Initialized = OldTree
+        ;
+        rb_insert_new(OldTree, SourceKey, root, Initialized)
+    ),
+    rb_insert_new(Initialized, DestKey, Strategy, NewTree).
 
 path_to_root(_PathTree, root, []).
 
 path_to_root(PathTree, Tail, [Tail | Rest]):-
-    mob_box(Tail, TailKey),
-    rb_lookup(TailKey, Next, PathTree),
+    Tail = strategy(Source, _NextMove, _Dest),
+    mob_box(Source, SourceKey),
+    rb_lookup(SourceKey, Next, PathTree),
     path_to_root(PathTree, Next, Rest).
 
 moves_to_target(TargetBox, Mobs, Moves):-
     empty_heap(Fringe), 
-
-    include(mob_type(hero), Mobs, [Hero]),
-    new_path_tree(Hero, PathTree),
-
+    rb_empty(PathTree),
     moves_to_target(TargetBox, Mobs, PathTree, Fringe, Moves).
 
 next_unseen_from_fringe(OldFringe, OldPaths, NewFringe, NewPaths, NewPriority, NewStrategy):-
     get_from_heap(OldFringe, NextPriority, NextStrategy, NextFringe),
-    NextStrategy = strategy(SourceHero, _NextMove, MovedHero),
     (
-        path_tree_add(OldPaths, SourceHero, MovedHero, NewPaths) ->
+        path_tree_add(OldPaths, NextStrategy, NewPaths) ->
             NewStrategy = NextStrategy,
             NewPriority = NextPriority,
             NewFringe = NextFringe
@@ -112,21 +113,21 @@ next_unseen_from_fringe(OldFringe, OldPaths, NewFringe, NewPaths, NewPriority, N
     ).
 
 % Prevent cycles by comitting to a single direction at any standing level.
-moves_to_target(TargetBox, Mobs, Paths, Fringe, [NextMove| Rest]):-
+moves_to_target(TargetBox, Mobs, Paths, Fringe, FromStart):-
     partition(mob_type(hero), Mobs, [Hero], Platforms),
     moves_from_here(TargetBox, Hero, Platforms, NewMoves),
     list_to_heap(NewMoves, NewHeap),
     merge_heaps(Fringe, NewHeap, AllFringe),
     next_unseen_from_fringe(AllFringe, Paths, NextFringe, NextPaths, Priority, NextMove),
-    NextMove = strategy(_Source, _M, MovedHero),
+    % What happens when we exhaust the fringe?
     (
-        Priority #= 0
-        ->  Rest = [],
-        path_to_root(NextPaths, MovedHero, Path),
+        Priority #= 0 ->  
+        path_to_root(NextPaths, NextMove, Path),
         reverse(Path, FromStart),
-        write("# > PATH: "), write(FromStart), nl
+        write("# > Winning PATH: "), write(FromStart), nl
         ;
-        moves_to_target(TargetBox, [MovedHero|Platforms], NextPaths, NextFringe, Rest)
+        NextMove = strategy(_SourceHero, _Move, MovedHero),
+        moves_to_target(TargetBox, [MovedHero|Platforms], NextPaths, NextFringe, FromStart)
     ).
 
 
