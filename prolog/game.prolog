@@ -95,10 +95,9 @@ game(Tick, AgentState, StartMobs, TargetBox, LevelDimensions, ViewportDimensions
 	ViewportDimensions = viewport_dimensions(VWidth, VHeight),
 	Viewport = viewport(_VLeft, _VTop, VWidth, VHeight),
 	viewport_follows_hero(MovedMobs, LevelDimensions, Viewport),
-	write(current_output, "## VIEWPORT: "), write(current_output, Viewport), nl,
 
 	NextTick #= Tick + 1,
-	write(current_output, "# "), write(current_output, next_state(MovedMobs, NextTick)), nl,
+	write(current_output, "# "), write(current_output, next_state(NextTick, MovedMobs)), nl,
 	write_state(Tick, Viewport, MovedMobs),
 
 	( StartMobs = MovedMobs; game(NextTick, NewAgentState, MovedMobs, TargetBox, LevelDimensions, ViewportDimensions)).

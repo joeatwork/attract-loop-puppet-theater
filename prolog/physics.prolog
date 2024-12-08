@@ -24,17 +24,33 @@ box_left(Left, box(Left, _Top, _Width, _Height)).
 box_right(Right, box(Left, _Top, Width, _Height)):-
 	Right #= Left + Width.
 
-% This could also calculate the intersection box if we need it.
-% Horiz and Vert will always be non-negative
-box_distance(B1, B2, Horiz, Vert):-
+% An Intersection MAY be an invalid box (with negative sizes)
+box_intersection(B1, B2, Intersection):-
 	box_left(Left1, B1), box_top(Top1, B1), box_right(Right1, B1), box_bottom(Bot1, B1),
 	box_left(Left2, B2), box_top(Top2, B2), box_right(Right2, B2), box_bottom(Bot2, B2),
 	Right #= max(Left1, Left2),
 	Left #= min(Right1, Right2),
 	Bottom #= max(Top1, Top2),
 	Top #= min(Bot1, Bot2),
-	Horiz #= max(0, Right - Left),
-	Vert #= max(0, Bottom - Top).
+	Width #= Right - Left,
+	Height #= Bottom - Top,
+	Intersection = box(Top, Left, Width, Height).
+
+% This could also calculate the intersection box if we need it.
+% Horiz and Vert will always be non-negative
+box_distance(B1, B2, Horiz, Vert):-
+	box_intersection(B1, B2, box(_Left, _Top, IWidth, IHeight)),
+	Horiz #= max(0, IWidth),
+	Vert #= max(0, IHeight).
+
+box_distance_squared(B1, B2, DistanceSquared):-
+	box_distance(B1, B2, Horiz, Vert),
+	DistanceSquared #= (Horiz * Horiz) + (Vert * Vert).
+
+closest_box(Source, Other1, Other2, Min):-
+	box_distance_squared(Source, Other1, D1),
+	box_distance_squared(Source, Other2, D2),
+	min_pair(D1-Other1, D2-Other2, _DMin-Min).
 
 move_box(MoveX, MoveY, box(Left, Top, Width, Height), box(NewLeft, NewTop, Width, Height)):-
     NewLeft #= Left + MoveX,
@@ -62,7 +78,24 @@ minimum_absolute_delta(Target, Other1, Other2, Min):-
 	AD2 #= abs(Target - Other2),
 	min_pair(AD1-Other1, AD2-Other2, _Abs-Min).
 
-% *_until_collision/3 fail if no collision occurs
+% This is not "slippery" enough - you don't actually want
+% folks stopping their vertical movement when the hit a horizontal barrier.
+move_until_collision(SourceBox, IntendX, IntendY, Collidables, AdjustX, AdjustY):-
+	move_box(IntendX, IntendY, SourceBox, TargetBox),
+
+	collisions(TargetBox, Collidables, [CH | CL]),
+	foldl(closest_box(SourceBox), CL, CH, CloseBox),
+	% The intersection acts as a bounding box on our move?
+	box_intersection(SourceBox, CloseBox, Intersection),
+	% It's not clear this is correct, Study cases for Quadrants
+	Intersection = box(_L, _T, MaxX, MaxY),
+	DNorm is sqrt((IntendX * IntendX) + (IntendY * IntendY)),
+	CollideNorm is sqrt((MaxX * MaxX) + (MaxY * MaxY)),
+	Adjust is CollideNorm / DNorm,
+
+	AdjustX is floor(IntendX * Adjust),
+	AdjustY is floor(IntendY * Adjust).
+
 
 move_right_until_collision(TargetBox, Collidables, LeftBarrier):-
 	collisions(TargetBox, Collidables, Collisions),
@@ -100,7 +133,6 @@ mob_move_x_toward_facing(Mob, Moved):-
 	TargetX #= XPosition - XSpeed,
 	Moved = mob(TypeId, TargetX, YPosition, XSpeed, YSpeed, left).
 
-
 mob_move_x(Mob, _Collidables, Mob):-
 	Mob = mob(_TypeId, _XPosition, _YPosition, none, _YSpeed, _Facing).
 
@@ -114,7 +146,7 @@ mob_move_x(Mob, Collidables, Moved):-
 			(
 				move_right_until_collision(TargetBox, Collidables, LeftBarrier) ->
 					hitbox_dimensions(TypeId, Width, _Height),
-					FinalX #= LeftBarrier - Width,
+					FinalX #= (LeftBarrier - Width) - 1,
 					Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing)
 				;
 				Moved = MoveTarget
@@ -123,7 +155,8 @@ mob_move_x(Mob, Collidables, Moved):-
 		Facing = left -> 
 		(
 			move_left_until_collision(TargetBox, Collidables, RightBarrier) ->
-				Moved = mob(TypeId, RightBarrier, YPosition, 0, YSpeed, Facing)
+				FinalX #= RightBarrier + 1,
+				Moved = mob(TypeId, FinalX, YPosition, 0, YSpeed, Facing)
 			;
 			Moved = MoveTarget
 		)
@@ -176,6 +209,38 @@ after_physics(Mobs, [Moved|Others]):-
 	mob_move(Mover, Collidables, Moved).
 
 :- begin_tests(physics).
+
+test(south_east_collision):-
+	move_until_collision(
+		box(0, 0, 4, 4),
+		20, 20,
+		[box(10, 0, 100, 100)],
+		5, 5
+	).
+
+test(north_east_collision):-
+	move_until_collision(
+		box(0, 50, 4, 4),
+		20, -20,
+		[box(10, 0, 100, 100)],
+		5, 6
+	).
+
+test(south_west_collision):-
+	move_until_collision(
+		box(50, 0, 4, 4),
+			-20, 20,
+			[box(0, 10, 100, 100)],
+			-6, 5
+		).
+
+test(north_west_collision):-
+	move_until_collision(
+		box(50, 50, 4, 4),
+			-20, -20,
+			[box(0, 0, 40, 40)],
+			-10, -10
+		).
 
 test(clear_left_path):-
 	findall(Moved, 

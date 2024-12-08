@@ -43,6 +43,7 @@ control_hero(TargetBox, Mobs, none, UpdatedState, UpdatedMobs):-
     control_hero(TargetBox, Mobs, agent_state(TargetBox, [PlanH|PlanL]), UpdatedState, UpdatedMobs).
 
 control_hero(TargetBox, Mobs, agent_state(TargetBox, [PlanH|PlanL]), agent_state(TargetBox, PlanL), [NewHero|Remainder]):-
+    write("#> Executing plan: "), write(PlanH), nl,
     partition(mob_type(hero), Mobs, [Hero], Remainder),
     PlanH = strategy(_Source, NextMove, _Moved),
     mob_with_speed(NextMove, Hero, NewHero).
