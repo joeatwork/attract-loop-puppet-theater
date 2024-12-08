@@ -18,6 +18,6 @@ main(_Argv):-
             mob(brick, 416, 344, none, none, neutral),
             mob(brick, 448, 344, none, none, neutral)
         ],
-        b5ox(360, 2000, 32, 32),
+        box(360, 2000, 32, 32),
         level_dimensions(1280, 1280),
         viewport_dimensions(1280, 720)).
