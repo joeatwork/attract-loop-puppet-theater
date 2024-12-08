@@ -78,25 +78,6 @@ minimum_absolute_delta(Target, Other1, Other2, Min):-
 	AD2 #= abs(Target - Other2),
 	min_pair(AD1-Other1, AD2-Other2, _Abs-Min).
 
-% This is not "slippery" enough - you don't actually want
-% folks stopping their vertical movement when the hit a horizontal barrier.
-move_until_collision(SourceBox, IntendX, IntendY, Collidables, AdjustX, AdjustY):-
-	move_box(IntendX, IntendY, SourceBox, TargetBox),
-
-	collisions(TargetBox, Collidables, [CH | CL]),
-	foldl(closest_box(SourceBox), CL, CH, CloseBox),
-	% The intersection acts as a bounding box on our move?
-	box_intersection(SourceBox, CloseBox, Intersection),
-	% It's not clear this is correct, Study cases for Quadrants
-	Intersection = box(_L, _T, MaxX, MaxY),
-	DNorm is sqrt((IntendX * IntendX) + (IntendY * IntendY)),
-	CollideNorm is sqrt((MaxX * MaxX) + (MaxY * MaxY)),
-	Adjust is CollideNorm / DNorm,
-
-	AdjustX is floor(IntendX * Adjust),
-	AdjustY is floor(IntendY * Adjust).
-
-
 move_right_until_collision(TargetBox, Collidables, LeftBarrier):-
 	collisions(TargetBox, Collidables, Collisions),
 	maplist(box_left(), [Lft|LftList], Collisions),
@@ -209,38 +190,6 @@ after_physics(Mobs, [Moved|Others]):-
 	mob_move(Mover, Collidables, Moved).
 
 :- begin_tests(physics).
-
-test(south_east_collision):-
-	move_until_collision(
-		box(0, 0, 4, 4),
-		20, 20,
-		[box(10, 0, 100, 100)],
-		5, 5
-	).
-
-test(north_east_collision):-
-	move_until_collision(
-		box(0, 50, 4, 4),
-		20, -20,
-		[box(10, 0, 100, 100)],
-		5, 6
-	).
-
-test(south_west_collision):-
-	move_until_collision(
-		box(50, 0, 4, 4),
-			-20, 20,
-			[box(0, 10, 100, 100)],
-			-6, 5
-		).
-
-test(north_west_collision):-
-	move_until_collision(
-		box(50, 50, 4, 4),
-			-20, -20,
-			[box(0, 0, 40, 40)],
-			-10, -10
-		).
 
 test(clear_left_path):-
 	findall(Moved, 
