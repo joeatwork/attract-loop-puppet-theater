@@ -12,7 +12,7 @@
 % sheet_geometry(
 %          MobType,
 %          SheetIdentifier, 
-%		   RenderOffsetX, RenderOffsetY, % offset of image from hitbox, in game coordinates 
+%		   RenderOffsetX, RenderOffsetY, % offset of top left of the image from hitbox, in game coordinates 
 %          LevelWidth, LevelHeight, % width and height in game coordinates
 %          ImageFileName,
 %          ImageOffsetX, ImageOffsetY, ImageWidth, ImageHeight % cropping for compositor, image coords
@@ -21,33 +21,62 @@
 :- discontiguous(hitbox_dimensions/3).
 :- discontiguous(sheet_geometry/11).
 
+
 hitbox_dimensions(hero, 48, 66).
 
-sheet_geometry(hero, standLeft, -6, -6, 60, 72,  "megaman/stand-left.png", 0, 0, 21, 24).
+sheet_geometry(hero, standLeft, -16, -5, 70, 75, "lonely_robot/stand-left.png", 0, 0, 140, 150).
 
-sheet_geometry(hero, standRight, -9, -6, 60, 72,  "megaman/stand-right.png", 0, 0, 21, 24).
+sheet_geometry(hero, standRight, -13, -5, 70, 75, "lonely_robot/stand-right.png", 0, 0, 140, 150).
+
+sheet_geometry(hero, runLeft1, -9, -8, 58, 78,  "lonely_robot/run-left-centered.png", 0, 0, 116, 156).
+
+sheet_geometry(hero, runLeft2, -29, -5, 91, 70, "lonely_robot/run-left-inner-leg.png", 0, 0, 182, 140).
+
+sheet_geometry(hero, runLeft3, -9, -8, 58, 78,  "lonely_robot/run-left-centered.png", 0, 0, 116, 156).
+
+sheet_geometry(hero, runLeft4, -10, -5, 78, 70, "lonely_robot/run-left-outer-leg.png", 0, 0, 156, 140).
+
+sheet_geometry(hero, runRight1, -10, -8, 58, 78,  "lonely_robot/run-right-centered.png", 0, 0, 116, 156).
+
+sheet_geometry(hero, runRight2, -22, -5, 91, 70, "lonely_robot/run-right-inner-leg.png", 0, 0, 182, 140).
+
+sheet_geometry(hero, runRight3, -10, -8, 58, 78,  "lonely_robot/run-right-centered.png", 0, 0, 116, 156).
+
+sheet_geometry(hero, runRight4, -29, -5, 78, 70, "lonely_robot/run-right-outer-leg.png", 0, 0, 156, 140).
+
+sheet_geometry(hero, jumpLeft, -24, -20, 68, 116, "lonely_robot/jump-left.png", 0, 0, 136, 232).
+
+sheet_geometry(hero, jumpRight, -6, -20, 68, 116, "lonely_robot/jump-right.png", 0, 0, 136, 232).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+hitbox_dimensions(megaman, 48, 66).
+
+sheet_geometry(megaman, standLeft, -6, -6, 60, 72,  "megaman/stand-left.png", 0, 0, 21, 24).
+
+sheet_geometry(megaman, standRight, -9, -6, 60, 72,  "megaman/stand-right.png", 0, 0, 21, 24).
 
 % TODO: run cycle filenames are out of order and confusing.
 
-sheet_geometry(hero, runLeft1, 0, -6, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
+sheet_geometry(megaman, runLeft1, 0, -6, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runLeft2, -12, 0, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
+sheet_geometry(megaman, runLeft2, -12, 0, 72, 66, "megaman/run-left-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runLeft3, 0, -6, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
+sheet_geometry(megaman, runLeft3, 0, -6, 48, 72, "megaman/run-left-2.png", 0, 9, 16, 24).
 
-sheet_geometry(hero, runLeft4, -6, 0, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 22).
+sheet_geometry(megaman, runLeft4, -6, 0, 63, 66, "megaman/run-left-3.png", 0, 0, 21, 22).
 
-sheet_geometry(hero, runRight1, 0, -6, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+sheet_geometry(megaman, runRight1, 0, -6, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
 
-sheet_geometry(hero, runRight2, -12, 0, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
+sheet_geometry(megaman, runRight2, -12, 0, 72, 66, "megaman/run-right-1.png", 0, 0, 24, 22).
 
-sheet_geometry(hero, runRight3, 0, -6, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
+sheet_geometry(megaman, runRight3, 0, -6, 48, 72, "megaman/run-right-2.png", 0, 0, 16, 24).
 
-sheet_geometry(hero, runRight4, -9, 0, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 22).
+sheet_geometry(megaman, runRight4, -9, 0, 63, 66, "megaman/run-right-3.png", 0, 0, 21, 22).
 
-sheet_geometry(hero, jumpLeft, -12, -6, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
+sheet_geometry(megaman, jumpLeft, -12, -6, 78, 90, "megaman/jump-left.png", 0, 0, 26, 30).
 
-sheet_geometry(hero, jumpRight, -18, -6, 72, 90, "megaman/jump-right.png", 0, 0, 26, 30).
+sheet_geometry(megaman, jumpRight, -18, -6, 72, 90, "megaman/jump-right.png", 0, 0, 26, 30).
 
 %%%%%%%%%%%
 
