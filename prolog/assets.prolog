@@ -82,7 +82,7 @@ sheet_geometry(megaman, jumpRight, -18, -6, 72, 90, "megaman/jump-right.png", 0,
 
 hitbox_dimensions(brick, 32, 32).
 
-sheet_geometry(brick, brick, 0, 0, 32, 32, "placeholders/brick-16x16.png", 0, 0, 16, 16).
+sheet_geometry(brick, brick, 0, 0, 32, 32, "furniture/crumbled-brick-1.png", 0, 0, 64, 64).
 
 %%%%%%%%%%%%
 
