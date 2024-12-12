@@ -9,7 +9,8 @@
         move_box/4,
 		overlaps/2,
         collisions/3,
-        move_down_until_collision/3
+        move_down_until_collision/3,
+		standing/2
     ]).
 
 :- use_module(library(clpfd)).
@@ -167,6 +168,13 @@ mob_move_y(Mob, Collidables, Moved):-
 mob_move(Mob, Collidables, Moved):-
 	mob_move_x(Mob, Collidables, XMoved),
 	mob_move_y(XMoved, Collidables, Moved).
+
+standing(Mob, Others):-
+	mob_speed(speed(_XSpeed, 0, _Facing), Mob),
+	mob_box(Mob, Bounds),
+	move_box(0, 1, Bounds, Sink),
+	% Slightly wrong - we are assuming NO collisions before the move.
+	collisions(Sink, Others, [_Footing|_Rest]).
 
 gravity(Mob, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),

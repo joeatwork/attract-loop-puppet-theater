@@ -1,4 +1,4 @@
-:- module(assets, [sheet_geometry/11, hitbox_dimensions/3, sprite_sheet/6]).
+:- module(assets, [sheet_geometry/11, hitbox_dimensions/3, sprite_sheet/7]).
 
 :- use_module(library(clpfd)).
 
@@ -111,49 +111,37 @@ anim_frame(Tick, 4):-
 % mob(type_identifier, xposition, yposition, xspeed, yspeed, facing)
 % xposition and yposition are abstract, but probably the bottom left corner of the sprite
 
-sprite_sheet(hero, 0, 0, left, _Tick, standLeft).
+sprite_sheet(floating, hero, _XSpeed, _YSpeed, right, _Tick, jumpRight).
 
-sprite_sheet(hero, 0, 0, right, _Tick, standRight).
+sprite_sheet(floating, hero, _XSpeed, _YSpeed, left, _Tick, jumpLeft).
 
-sprite_sheet(hero, XSpeed, 0, right, Tick, runRight1):-
-	anim_frame(Tick, 1),
-	XSpeed #\= 0.
+sprite_sheet(rooted, hero, 0, 0, left, _Tick, standLeft).
 
-sprite_sheet(hero, XSpeed, 0, right, Tick, runRight2):-
-	anim_frame(Tick, 2),
-	XSpeed #\= 0.
+sprite_sheet(rooted, hero, 0, 0, right, _Tick, standRight).
 
-sprite_sheet(hero, XSpeed, 0, right, Tick, runRight3):-
-	anim_frame(Tick, 3),
-	XSpeed #\= 0.
+sprite_sheet(rooted, hero, _XSpeed, _YSpeed, right, Tick, runRight1):-
+	anim_frame(Tick, 1).
 
-sprite_sheet(hero, XSpeed, 0, right, Tick, runRight4):-
-	anim_frame(Tick, 4),
-	XSpeed #\= 0.
+sprite_sheet(rooted, hero, _XSpeed, _YSpeed, right, Tick, runRight2):-
+	anim_frame(Tick, 2).
 
-sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft1):-
-	anim_frame(Tick, 1),
-	XSpeed #\= 0.
+sprite_sheet(rooted, hero, _XSpeed, _YSpeed, right, Tick, runRight3):-
+	anim_frame(Tick, 3).
 
-sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft2):-
-	anim_frame(Tick, 2),
-	XSpeed #\= 0.
+sprite_sheet(rooted, hero, _XSpeed, _YSpeed, right, Tick, runRight4):-
+	anim_frame(Tick, 4).
 
-sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft3):-
-	anim_frame(Tick, 3),
-	XSpeed #\= 0.
+sprite_sheet(rooted, hero, _XSpeed, _YSpeed, left, Tick, runLeft1):-
+	anim_frame(Tick, 1).
 
-sprite_sheet(hero, XSpeed, 0, left, Tick, runLeft4):-
-	anim_frame(Tick, 4),
-	XSpeed #\= 0.
+sprite_sheet(rooted, hero, _XSpeed, _YSpeed, left, Tick, runLeft2):-
+	anim_frame(Tick, 2).
 
-% BUG: "jump if Yspeed #\= 0" means we have a weird stand at the top of the jump?
+sprite_sheet(rooted, hero, _XSpeed, _YSpeed, left, Tick, runLeft3):-
+	anim_frame(Tick, 3).
 
-sprite_sheet(hero, _XSpeed, YSpeed, right, _Tick, jumpRight):-
-	YSpeed #\= 0.
+sprite_sheet(rooted, hero, _XSpeed, _YSpeed, left, Tick, runLeft4):-
+	anim_frame(Tick, 4).
 
-sprite_sheet(hero, _XSpeed, YSpeed, left, _Tick, jumpLeft):-
-	YSpeed #\= 0.
-
-sprite_sheet(brick, _XSpeed, _YSpeed, _Facing, _Tick, brick).
+sprite_sheet(_Footing, brick, _XSpeed, _YSpeed, _Facing, _Tick, brick).
 

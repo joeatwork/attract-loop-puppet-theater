@@ -46,10 +46,16 @@ viewport_follows_hero(Mobs, level_dimensions(LevelWidth, LevelHeight), viewport(
 	VTop #= min(CenteredTop, LevelHeight - VHeight).
 
 
-writable_mob(Tick, Viewport, Mob, Write):-
+writable_mob(Tick, Viewport, AllMobs, Mob, Write):-
+	exclude(=(Mob), AllMobs, Peers),
 	Mob = mob(TypeId, _RawLeft, _RawBottom, XSpeed, YSpeed, Facing),
-	mob_box(Mob, box(HitLeft, HitTop, _HitWidth, _HitHeight)),
-	sprite_sheet(TypeId, XSpeed, YSpeed, Facing, Tick, Sprite),
+	mob_box(Mob, box(HitLeft, HitTop, _HitWidth, _HitHeight)),	
+	(
+		standing(Mob, Peers) -> 
+			sprite_sheet(rooted, TypeId, XSpeed, YSpeed, Facing, Tick, Sprite)
+		;
+		sprite_sheet(floating, TypeId, XSpeed, YSpeed, Facing, Tick, Sprite)
+	),
 	sheet_geometry(TypeId, Sprite,
 			 LevelOffsetX, LevelOffsetY, LevelWidth, LevelHeight,
 			 SheetName, SheetX, SheetY, SheetWidth, SheetHeight),
@@ -73,7 +79,7 @@ writable_mob(Tick, Viewport, Mob, Write):-
 	}.
 
 write_state(Tick, Viewport, State):-
-	maplist(writable_mob(Tick, Viewport),
+	maplist(writable_mob(Tick, Viewport, State),
 		State,
 		Writables),
 	json_write_dict(current_output,

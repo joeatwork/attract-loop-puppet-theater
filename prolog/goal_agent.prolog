@@ -12,13 +12,6 @@
 
 strategy_parts(Source, Move, MovedHero, strategy(Source, Move, MovedHero)).
 
-% We can jump our Y speed is zero, and if we'd collide if we moved down.
-standing(Mob, OtherBoxen):-
-    mob_speed(speed(_XSpeed, 0, _Facing), Mob),
-    mob_box(Mob, Bounds),
-    move_box(0, 1, Bounds, Sink),
-    collisions(Sink, OtherBoxen, [_Footing|_Rest]).
-
 control_hero(TargetBox, Mobs, _OldPlan, agent_state(TargetBox, []), [StoppedHero| Rest]):-
     partition(mob_type(hero), Mobs, [Hero], Rest),
     mob_box(Hero, HeroBox),

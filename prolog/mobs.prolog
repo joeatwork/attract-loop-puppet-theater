@@ -18,7 +18,6 @@ mob_with_speed(
 	mob(TypeId, Left, Bottom, NewXSpeed, NewYSpeed, NewFacing)
 	).
 
-
 mob_box(Mob, box(Left, Top, Width, Height)):-
 	mob_type(TypeId, Mob),
 	mob_left(Left, Mob),
