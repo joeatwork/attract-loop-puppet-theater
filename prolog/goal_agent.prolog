@@ -60,10 +60,9 @@ evaluate_move(TargetBox, Hero, Platforms, Move, MovedHero, Quality):-
 
 moves_from_here(TargetBox, Hero, Platforms, Results):-
     mob_speed(speed(_XSpeed, YSpeed, _Facing), Hero),
-    maplist(mob_box(), Platforms, PlatformBoxen),
     ( 
         % When standing, you can run or leap
-        standing(Hero, PlatformBoxen)
+        standing(Hero, Platforms)
         ->  Moves = [ speed(5, 0, right), speed(5, 0, left), speed(5, -18, right), speed(5, -18, left)]
         ;
         % When leaping / falling you can steer X but not Y

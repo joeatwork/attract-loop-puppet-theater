@@ -46,20 +46,24 @@ viewport_follows_hero(Mobs, level_dimensions(LevelWidth, LevelHeight), viewport(
 	VTop #= min(CenteredTop, LevelHeight - VHeight).
 
 
-writable_mob(Tick, Viewport, AllMobs, Mob, Write):-
-	exclude(=(Mob), AllMobs, Peers),
+sprite_for(Tick, Mob, Peers, Sprite):-
 	Mob = mob(TypeId, _RawLeft, _RawBottom, XSpeed, YSpeed, Facing),
-	mob_box(Mob, box(HitLeft, HitTop, _HitWidth, _HitHeight)),	
 	(
 		standing(Mob, Peers) -> 
 			sprite_sheet(rooted, TypeId, XSpeed, YSpeed, Facing, Tick, Sprite)
 		;
 		sprite_sheet(floating, TypeId, XSpeed, YSpeed, Facing, Tick, Sprite)
-	),
+	).
+
+
+writable_mob(Tick, Viewport, AllMobs, Mob, Write):-
+	exclude(=(Mob), AllMobs, Peers),
+	Mob = mob(TypeId, _RawLeft, _RawBottom, _XSpeed, _YSpeed, _Facing),
+	sprite_for(Tick, Mob, Peers, Sprite),
 	sheet_geometry(TypeId, Sprite,
 			 LevelOffsetX, LevelOffsetY, LevelWidth, LevelHeight,
 			 SheetName, SheetX, SheetY, SheetWidth, SheetHeight),
-
+	mob_box(Mob, box(HitLeft, HitTop, _HitWidth, _HitHeight)),
 	Viewport = viewport(VLeft, VTop, _VWidth, _VHeight),
 	ViewportX #= (HitLeft + LevelOffsetX) - VLeft,
 	ViewportY #= (HitTop + LevelOffsetY) - VTop,

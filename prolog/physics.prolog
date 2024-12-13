@@ -169,12 +169,13 @@ mob_move(Mob, Collidables, Moved):-
 	mob_move_x(Mob, Collidables, XMoved),
 	mob_move_y(XMoved, Collidables, Moved).
 
-standing(Mob, Others):-
+standing(Mob, OtherMobs):-
 	mob_speed(speed(_XSpeed, 0, _Facing), Mob),
 	mob_box(Mob, Bounds),
 	move_box(0, 1, Bounds, Sink),
+	maplist(mob_box, OtherMobs, OtherBoxes),
 	% Slightly wrong - we are assuming NO collisions before the move.
-	collisions(Sink, Others, [_Footing|_Rest]).
+	collisions(Sink, OtherBoxes, [_Footing|_Rest]).
 
 gravity(Mob, Moved):-
 	Mob = mob(TypeId, XPosition, YPosition, XSpeed, YSpeed, Facing),
