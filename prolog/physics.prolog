@@ -5,6 +5,8 @@
         box_bottom/2,
         box_left/2,
         box_right/2,
+		box_width/2,
+		box_height/2,
 		box_distance/4,
         move_box/4,
 		overlaps/2,
@@ -24,6 +26,8 @@ box_bottom(Bottom, box(_Left, Top, _Width, Height)):-
 box_left(Left, box(Left, _Top, _Width, _Height)).
 box_right(Right, box(Left, _Top, Width, _Height)):-
 	Right #= Left + Width.
+box_width(Width, box(_Left, _Top, Width, _Height)).
+box_height(Height, box(_Left, _Top, _Width, Height)).
 
 % An Intersection MAY be an invalid box (with negative sizes)
 box_intersection(B1, B2, Intersection):-

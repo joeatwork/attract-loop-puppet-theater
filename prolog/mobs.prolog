@@ -1,4 +1,4 @@
-:- module(mobs, [mob_type/2, mob_bottom/2, mob_left/2, mob_speed/2, mob_with_speed/3, mob_box/2]).
+:- module(mobs, [mob_type/2, mob_bottom/2, mob_left/2, mob_speed/2, mob_with_speed/3, mob_shift/4, mob_box/2]).
 
 :- use_module(library(clpfd)).
 
@@ -24,3 +24,9 @@ mob_box(Mob, box(Left, Top, Width, Height)):-
 	mob_bottom(Bottom, Mob),
 	hitbox_dimensions(TypeId, Width, Height),
 	Top #= Bottom - Height.
+
+mob_shift(ShiftLeft, ShiftTop, Mob, Shifted):-
+	Mob = mob(TypeId, OriginalLeft, OriginalTop, XSpeed, YSpeed, Facing),
+	NewLeft #= ShiftLeft + OriginalLeft,
+	NewTop #= ShiftTop + OriginalTop,
+	Shifted = mob(TypeId, NewLeft, NewTop, XSpeed, YSpeed, Facing). 
